@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Recruitment AI — Convisto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@100..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0B0A18;
+  --ink-2:#120F26;
+  --ink-3:#1B1642;
+  --paper:#F1EFFA;
+  --paper-dim:#C2BEDE;
+  --muted:#938FB6;
+  --muted-2:#615C88;
+  --gold:#7C5CFF;
+  --gold-soft:#9D86FF;
+  --sage:#46E5B5;
+  --clay:#FF7A9C;
+  --line:rgba(238,236,250,0.12);
+  --line-soft:rgba(238,236,250,0.06);
+  --panel:rgba(238,236,250,0.04);
+  --shadow:0 30px 80px -20px rgba(0,0,0,0.8);
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;width:100%;overflow:hidden;background:var(--ink);color:var(--paper)}
+body{
+  font-family:"Sora",sans-serif;
+  -webkit-font-smoothing:antialiased;
+  letter-spacing:.005em;
+  position:relative;
+}
+/* atmospheric background */
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+  background:
+    radial-gradient(62% 72% at 30% 26%, rgba(124,92,255,0.20), transparent 60%),
+    radial-gradient(58% 66% at 80% 74%, rgba(91,63,224,0.16), transparent 62%),
+    radial-gradient(70% 60% at 50% 104%, rgba(45,24,120,0.30), transparent 72%),
+    #0B0A18;
+}
+.bg .scrim{position:absolute;inset:0;background:#242228;opacity:0;transition:opacity 1s var(--ease)}
+.bg .grain{
+  position:absolute;inset:0;opacity:.055;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.bg .vignette{position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 50%, transparent 55%, rgba(0,0,0,0.5))}
+body.t-black .bg .scrim{opacity:1}
+
+/* progress */
+.progress{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--gold-soft));width:0;z-index:50;transition:width .6s var(--ease);box-shadow:0 0 14px rgba(124,92,255,.5)}
+
+/* stage */
+.stage{position:relative;z-index:2;height:100vh;width:100vw}
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(28px,6vw,120px);
+  opacity:0;visibility:hidden;
+  transform:translateY(14px) scale(.992);
+  transition:opacity .55s var(--ease), transform .7s var(--ease), visibility 0s linear .7s;
+  pointer-events:none;
+}
+.slide.active{opacity:1;visibility:visible;transform:none;pointer-events:auto;transition:opacity .65s var(--ease) .05s, transform .8s var(--ease) .05s, visibility 0s}
+.slide-inner{max-width:1180px;width:100%;margin:0 auto}
+
+/* reveal system */
+.r{opacity:0;transform:translateY(22px);filter:blur(2px);transition:opacity .7s var(--ease-out), transform .8s var(--ease-out), filter .8s var(--ease-out)}
+.slide.active .r{opacity:1;transform:none;filter:none;transition-delay:calc(.12s + var(--i,0)*.085s)}
+
+/* typography */
+.kicker{display:inline-flex;align-items:center;gap:10px;font-size:clamp(11px,1vw,13px);font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:22px}
+.kicker::before{content:"";width:30px;height:1px;background:var(--gold);transform-origin:left;animation:none}
+.slide.active .kicker::before{animation:drawLine .8s var(--ease) .25s both}
+@keyframes drawLine{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+h1{font-family:"Sora",sans-serif;font-weight:380;font-size:clamp(40px,6.6vw,98px);line-height:.98;letter-spacing:-.015em}
+h2{font-family:"Sora",sans-serif;font-weight:400;font-size:clamp(30px,4.4vw,60px);line-height:1.03;letter-spacing:-.012em;margin-bottom:14px}
+h2 em{font-style:italic;color:var(--gold)}
+h1 em{font-style:italic;color:var(--gold)}
+.lead{font-size:clamp(16px,1.7vw,22px);line-height:1.5;color:var(--paper-dim);max-width:60ch;font-weight:300}
+.sub{font-size:clamp(14px,1.3vw,17px);line-height:1.6;color:var(--muted);max-width:64ch;font-weight:300}
+strong{font-weight:700;color:var(--paper)}
+.accent{color:var(--gold)}
+.sage{color:var(--sage)}
+.clay{color:var(--clay)}
+
+/* layout helpers */
+.grid{display:grid;gap:clamp(14px,1.6vw,22px)}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.flex{display:flex}
+.between{justify-content:space-between}
+.items-end{align-items:flex-end}
+.gap{gap:clamp(16px,2vw,40px)}
+.mt{margin-top:clamp(20px,3vw,44px)}
+.mt-s{margin-top:18px}
+.mb-s{margin-bottom:14px}
+
+/* card */
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:18px;
+  padding:clamp(18px,2vw,30px);position:relative;overflow:hidden;
+  backdrop-filter:blur(2px);
+  transition:transform .5s var(--ease), border-color .5s, background .5s;
+}
+.card:hover{transform:translateY(-4px);border-color:rgba(238,236,250,0.22);background:rgba(238,236,250,0.055)}
+.card .num{font-family:"Sora",sans-serif;font-size:13px;color:var(--muted-2);margin-bottom:12px;font-weight:500}
+.card h3{font-size:clamp(16px,1.5vw,20px);font-weight:700;margin-bottom:8px;letter-spacing:-.01em}
+.card p{font-size:clamp(13px,1.1vw,15px);line-height:1.5;color:var(--muted);font-weight:300}
+.card.glow-gold::before,.card.glow-sage::before,.card.glow-clay::before{content:"";position:absolute;top:0;left:0;width:100%;height:3px}
+.card.glow-gold::before{background:var(--gold)}
+.card.glow-sage::before{background:var(--sage)}
+.card.glow-clay::before{background:var(--clay)}
+
+/* stat */
+.stat{font-family:"Sora",sans-serif;font-weight:420;font-size:clamp(34px,4.8vw,64px);line-height:1;letter-spacing:-.02em}
+.stat .unit{font-size:.42em;color:var(--muted);font-family:"Sora",sans-serif;font-weight:500;margin-left:4px;letter-spacing:0}
+.stat-label{font-size:13px;color:var(--muted);margin-top:8px;font-weight:400;letter-spacing:.02em}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:1px solid var(--line)}
+.chip.yes{color:var(--sage);border-color:rgba(70,229,181,.35);background:rgba(70,229,181,.07)}
+.chip.no{color:var(--clay);border-color:rgba(255,122,156,.35);background:rgba(255,122,156,.07)}
+.chip .ic{width:16px;height:16px;display:inline-flex}
+
+/* list */
+.ilist{list-style:none;display:flex;flex-direction:column;gap:14px}
+.ilist li{display:flex;gap:14px;align-items:flex-start;font-size:clamp(14px,1.2vw,16.5px);line-height:1.45;color:var(--paper-dim);font-weight:300}
+.ilist li .mk{flex:none;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;margin-top:1px;font-size:12px;font-weight:700}
+.mk.gold{background:rgba(124,92,255,.14);color:var(--gold)}
+.mk.sage{background:rgba(70,229,181,.14);color:var(--sage)}
+.mk.clay{background:rgba(255,122,156,.14);color:var(--clay)}
+.mk.num{background:rgba(238,236,250,.08);color:var(--paper);font-family:"Sora",sans-serif}
+
+/* bars */
+.bar-row{display:flex;align-items:center;gap:16px;margin-bottom:13px}
+.bar-name{width:clamp(90px,12vw,150px);font-size:14px;font-weight:600;flex:none}
+.bar-track{flex:1;height:10px;background:rgba(238,236,250,.06);border-radius:6px;overflow:hidden}
+.bar-fill{height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,var(--gold),var(--gold-soft));transition:width 1.1s var(--ease-out)}
+.slide.active .bar-fill{width:var(--w)}
+.bar-val{width:84px;text-align:right;font-size:14px;color:var(--muted);font-weight:500;flex:none;font-variant-numeric:tabular-nums}
+
+/* paths comparison */
+.paths{display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,2vw,28px)}
+.path{border-radius:20px;padding:clamp(22px,2.6vw,38px);border:1px solid var(--line);position:relative;overflow:hidden}
+.path.wig{background:linear-gradient(160deg,rgba(70,229,181,.10),rgba(70,229,181,.02));border-color:rgba(70,229,181,.32)}
+.path.platform{background:linear-gradient(160deg,rgba(255,122,156,.08),rgba(255,122,156,.015));border-color:rgba(255,122,156,.28)}
+.path .tag{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;margin-bottom:14px}
+.path.wig .tag{color:var(--sage)}.path.platform .tag{color:var(--clay)}
+.path h3{font-family:"Sora",sans-serif;font-weight:420;font-size:clamp(22px,2.4vw,34px);line-height:1.05;margin-bottom:14px;letter-spacing:-.01em}
+.path p{font-size:14.5px;line-height:1.5;color:var(--paper-dim);font-weight:300}
+
+/* timeline */
+.tl{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(14px,1.6vw,26px);margin-top:8px}
+.tl::before{content:"";position:absolute;top:30px;left:6%;right:6%;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+.phase{position:relative;text-align:left}
+.phase .dot{width:14px;height:14px;border-radius:50%;background:var(--ink);border:2px solid var(--gold);margin-bottom:18px;position:relative;z-index:2;box-shadow:0 0 0 6px var(--ink)}
+.phase.p1 .dot{border-color:var(--sage)}
+.phase.p2 .dot{border-color:var(--paper)}
+.phase .ph{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px}
+.phase h3{font-family:"Sora",sans-serif;font-weight:420;font-size:clamp(18px,1.8vw,24px);margin-bottom:10px;letter-spacing:-.01em}
+.phase p{font-size:13.5px;line-height:1.5;color:var(--muted);font-weight:300}
+
+/* deal scale */
+.scale{margin-top:clamp(16px,2vw,30px)}
+.scale-bar{height:54px;border-radius:14px;background:linear-gradient(90deg,rgba(70,229,181,.18),rgba(124,92,255,.18),rgba(255,122,156,.18));border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;color:var(--paper-dim);font-weight:600}
+.scale-labels{display:flex;justify-content:space-between;margin-top:12px;font-size:13px;color:var(--muted);font-weight:300;line-height:1.4}
+.scale-labels div{max-width:30%}
+
+/* arch flow */
+.arch{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:clamp(8px,1vw,18px);margin-top:8px}
+.arch .col{display:flex;flex-direction:column;gap:10px}
+.arch .node{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:13.5px;font-weight:500;color:var(--paper-dim);line-height:1.3}
+.arch .node .t{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);display:block;margin-bottom:4px;font-weight:700}
+.arch .arrow{color:var(--gold);font-size:22px;opacity:.7;text-align:center}
+.arch .head{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:4px;text-align:center}
+
+/* big quote */
+.quote{font-family:"Sora",sans-serif;font-weight:340;font-size:clamp(26px,3.6vw,50px);line-height:1.12;letter-spacing:-.012em;max-width:20ch}
+.quote em{font-style:italic;color:var(--gold)}
+
+/* nav */
+.nav{position:fixed;bottom:26px;right:30px;z-index:40;display:flex;align-items:center;gap:12px}
+.navbtn{
+  width:50px;height:50px;border-radius:50%;border:1px solid var(--line);
+  background:rgba(18,15,38,.6);backdrop-filter:blur(10px);color:var(--paper);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .35s var(--ease);
+}
+.navbtn:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-2px)}
+.navbtn:active{transform:scale(.94)}
+.navbtn:disabled{opacity:.28;cursor:default;transform:none;border-color:var(--line);color:var(--paper)}
+.navbtn svg{width:20px;height:20px}
+.counter{position:fixed;bottom:36px;left:30px;z-index:40;font-family:"Sora",sans-serif;font-size:15px;color:var(--muted);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.counter .cur{color:var(--paper);font-size:19px}
+
+/* dot rail */
+.rail{position:fixed;top:50%;right:18px;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:9px}
+.rail button{width:8px;height:8px;border-radius:50%;border:none;background:rgba(238,236,250,.2);cursor:pointer;padding:0;transition:all .3s var(--ease)}
+.rail button:hover{background:rgba(238,236,250,.45);transform:scale(1.3)}
+.rail button.on{background:var(--gold);transform:scale(1.4);box-shadow:0 0 10px rgba(124,92,255,.6)}
+
+/* slide label */
+.slabel{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);z-index:40;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-2);font-weight:600;white-space:nowrap}
+
+/* hint */
+.hint{position:fixed;top:24px;right:30px;z-index:40;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);font-weight:600;display:flex;align-items:center;gap:8px;opacity:.7;transition:opacity .5s}
+.hint.gone{opacity:0;pointer-events:none}
+.key{border:1px solid var(--line);border-radius:5px;padding:2px 7px;font-size:10px;color:var(--muted)}
+
+/* cover specifics */
+.cover-meta{display:flex;gap:34px;flex-wrap:wrap;margin-top:38px}
+.cover-meta .m .lab{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2);font-weight:700;margin-bottom:5px}
+.cover-meta .m .val{font-size:16px;color:var(--paper-dim);font-weight:400}
+.seal{position:absolute;top:clamp(28px,6vw,80px);right:clamp(28px,6vw,90px);font-family:"Sora",sans-serif;font-style:italic;font-size:14px;color:var(--muted);opacity:.8}
+
+/* slide themes */
+.slide.theme-black{
+  --paper:#F1F0EA;
+  --line:rgba(241,240,234,0.13);
+  --line-soft:rgba(241,240,234,0.06);
+  --panel:rgba(241,240,234,0.045);
+}
+
+/* brand / logo */
+.brand{display:flex;align-items:center;gap:15px;margin-bottom:30px}
+.brand .mark{height:clamp(32px,3.8vw,50px);width:auto;color:var(--paper);display:block}
+.brand .wm{font-family:"Sora",sans-serif;font-weight:700;font-size:clamp(30px,4vw,52px);letter-spacing:-.035em;color:var(--paper);line-height:1}
+.brandmark{position:fixed;top:26px;left:30px;z-index:40;display:flex;align-items:center;gap:9px;opacity:.9;transition:opacity .5s var(--ease)}
+.brandmark .mark{height:19px;width:auto;color:var(--paper);display:block}
+.brandmark .wm{font-family:"Sora",sans-serif;font-weight:700;font-size:16px;letter-spacing:-.03em;color:var(--paper)}
+.brandmark.hide{opacity:0}
+
+/* responsive */
+@media (max-width:900px){
+  .g2,.g3,.g4,.paths,.tl{grid-template-columns:1fr}
+  .tl::before{display:none}
+  .arch{grid-template-columns:1fr;gap:8px}
+  .arch .arrow{transform:rotate(90deg);font-size:18px}
+  .rail{display:none}
+  .slabel{display:none}
+  .lead{max-width:none}
+}
+@media (max-width:620px){
+  .nav{bottom:18px;right:18px}
+  .counter{bottom:24px;left:18px}
+  .cover-meta{gap:22px}
+}
+.nowrap{white-space:nowrap}
+.divider{height:1px;background:var(--line);margin:clamp(16px,2.4vw,30px) 0}
+.tiny{font-size:12px;color:var(--muted-2);font-weight:400;line-height:1.5;margin-top:14px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" aria-hidden="true" style="position:absolute"><symbol id="logo" viewBox="0 0 1420 279"><path d="M956.234 35.44C949.444 37.007 943.524 44.1456 943.524 50.936C943.524 59.4676 946.136 63.8204 953.1 66.7803C971.208 74.2671 989.838 63.1239 985.485 47.1055C984.789 44.4938 982.351 41.0116 979.914 39.2705C975.561 36.1364 963.025 34.0471 956.234 35.44Z" fill="currentColor"/>
+<path d="M1165.34 63.4725C1166.04 70.9593 1167.08 80.0132 1167.61 83.4955L1168.65 90.1117H1155.25H1142.01V102.3C1142.01 108.916 1142.01 115.01 1142.01 115.706C1142.01 116.577 1147.06 117.273 1153.33 117.622L1164.65 118.144V150.877C1164.65 189.008 1166.39 197.017 1176.84 208.857C1186.76 220.348 1197.9 224.527 1219.49 225.397C1241.08 226.268 1252.23 224.527 1253.1 220C1253.44 218.259 1253.27 211.817 1252.57 205.723L1251.53 194.928L1235.34 195.798C1222.1 196.669 1218.1 196.321 1212.7 193.709C1202.43 188.834 1201.21 183.959 1201.21 148.44V117.97H1226.46H1251.7V104.041V90.1117H1222.1C1205.91 90.1117 1192.51 89.9376 1192.51 89.5894C1192.51 89.2412 1195.29 80.8838 1198.6 71.1334C1201.91 61.209 1204.17 52.3293 1203.65 51.6328C1203.13 50.7622 1194.07 50.0658 1183.45 50.0658H1164.13L1165.34 63.4725Z" fill="currentColor"/>
+<path d="M346.839 89.2417C310.972 99.1661 294.083 123.368 296.172 161.673C298.262 196.321 318.111 217.563 355.023 224.527C368.429 226.965 399.073 225.224 410.739 221.393L420.315 218.085L420.837 203.634C421.185 195.799 421.011 189.357 420.663 189.357C420.315 189.357 413.873 190.924 406.386 192.839C389.845 197.018 367.385 197.366 356.59 193.709C339.701 187.615 331.343 173.338 332.736 152.445C333.781 135.207 339.004 127.024 352.759 120.234C361.813 115.881 364.599 115.359 379.398 115.533C391.064 115.707 399.247 116.752 407.256 119.537C413.524 121.453 419.096 123.194 419.967 123.194C420.663 123.194 421.185 116.577 421.185 108.394V93.7686L412.132 90.8087C399.247 86.8041 359.201 85.7594 346.839 89.2417Z" fill="currentColor"/>
+<path d="M486.478 89.0672C450.959 97.5988 430.762 129.636 436.856 167.766C442.776 205.549 469.415 225.92 512.421 225.92C547.94 225.92 572.838 212.861 584.504 187.963C588.857 178.909 589.205 176.298 589.205 156.275C589.205 136.426 588.857 133.64 584.678 124.76C575.972 106.13 561.869 94.813 540.453 89.2413C528.091 86.1073 499.014 85.9332 486.478 89.0672ZM527.221 116.229C543.761 120.93 553.512 135.033 553.512 154.36C553.512 175.427 547.418 186.919 532.966 193.361C519.56 199.107 495.532 197.191 486.478 189.704C469.589 175.601 467.848 138.689 483.344 124.586C492.92 115.881 512.769 112.05 527.221 116.229Z" fill="currentColor"/>
+<path d="M682.181 89.7632C664.944 96.7278 654.671 109.264 649.796 129.635C648.055 136.251 646.488 139.908 645.792 138.515C645.095 137.296 642.658 125.805 640.568 113.094L636.389 90.1115H623.679H610.969L611.317 155.752L611.84 221.567L629.599 222.089L647.184 222.611L647.881 184.655C648.403 148.962 648.577 146.176 652.408 138.515C665.466 112.05 699.767 107 716.133 128.939C719.615 133.64 719.79 136.774 720.66 177.69L721.531 221.567L739.464 222.089L757.224 222.611V179.954C757.224 155.056 756.353 133.466 755.309 128.068C751.652 110.831 742.947 98.8171 728.669 91.5044C718.571 86.1069 693.498 85.2363 682.181 89.7632Z" fill="currentColor"/>
+<path d="M1045.21 89.0675C1018.74 95.6838 1005.86 115.184 1014.04 136.252C1019.09 149.833 1033.02 157.32 1064.01 163.24C1082.29 166.722 1090.48 170.204 1093.26 175.253C1098.31 185.004 1092.22 193.535 1078.11 196.147C1066.8 198.41 1041.2 195.625 1027.45 190.924C1010.56 185.004 1011.43 185.004 1011.43 189.705C1011.43 192.142 1010.91 198.759 1010.38 204.678L1009.16 215.299L1015.96 218.085C1037.02 226.791 1084.21 228.358 1104.58 220.697C1128.43 211.817 1138.53 196.321 1133.31 176.994C1129.13 161.324 1113.98 152.27 1080.2 145.48C1070.63 143.565 1060.53 140.779 1057.92 139.386C1046.95 133.815 1048.69 120.756 1061.05 116.577C1072.54 112.573 1091.87 114.836 1122.86 123.368C1124.95 123.89 1125.65 121.452 1126.52 111.006C1127.21 102.3 1127.04 97.2508 1125.65 95.8579C1119.03 88.7193 1064.36 84.0182 1045.21 89.0675Z" fill="currentColor"/>
+<path d="M1314.73 89.2413C1280.95 98.6434 1263.89 123.89 1265.98 161.846C1268.42 202.937 1296.45 225.92 1343.81 225.92C1369.93 225.92 1390.47 217.911 1404.05 202.763C1415.72 190.053 1419.55 178.387 1419.55 156.275C1419.55 136.426 1416.24 124.586 1407.54 112.921C1401.44 104.389 1386.82 94.1165 1376.54 90.8083C1364.01 86.6296 1327.09 85.7591 1314.73 89.2413ZM1362.27 118.666C1377.41 125.805 1382.81 135.555 1382.81 156.275C1382.81 183.262 1369.75 196.669 1343.11 196.669C1323.26 196.669 1313.34 191.271 1306.38 176.298C1301.85 166.547 1300.8 151.574 1304.11 139.908C1306.55 131.203 1316.82 120.233 1325.7 117.099C1336.67 113.269 1352.17 113.791 1362.27 118.666Z" fill="currentColor"/>
+<path d="M770.282 93.0717C770.804 94.8128 774.112 104.041 777.42 113.617C780.728 123.193 790.653 151.574 799.533 176.82L815.551 222.438L849.503 222.089L883.455 221.567L892.683 195.45C897.906 180.999 908.179 151.574 915.666 129.635L929.247 90.1117H910.791H892.161L871.789 152.618C860.472 186.918 851.244 215.995 851.244 217.04C851.244 218.085 850.548 218.955 849.851 218.955C848.981 218.955 846.369 212.513 843.931 204.504C841.494 196.669 832.266 167.766 823.212 140.256L806.845 90.1117H787.867C770.63 90.1117 769.063 90.2859 770.282 93.0717Z" fill="currentColor"/>
+<path d="M938.301 104.911V119.711H944.395H950.489L950.837 170.552L951.359 221.567L969.293 222.089L987.052 222.611V156.274V90.1115H962.677H938.301V104.911Z" fill="currentColor"/>
+<path d="M180.945 58.2011C161.685 76.0004 147.332 94.3083 142.608 107.531C134.068 131.094 135.885 158.555 147.332 180.593C153.691 193.137 157.688 197.883 176.766 215.852C197.661 235.686 199.114 236.703 206.018 236.703C212.559 236.703 214.558 235.516 226.913 224.328C243.811 209.241 246.899 205.173 246.899 198.392C246.899 193.646 243.447 189.747 221.462 169.066C199.296 148.215 196.025 144.485 196.025 139.569C196.025 134.823 199.296 131.094 221.462 110.243C245.446 87.5276 246.899 85.8324 246.899 79.5603C246.899 73.4576 245.628 71.7625 229.82 57.3535C214.558 43.2835 212.196 41.7579 206.018 41.7579C199.841 41.7579 197.479 43.2835 180.945 58.2011Z" fill="currentColor"/>
+<path d="M171.627 254.328C178.714 262.478 177.581 279 166.982 279H107.24C103.768 279 96.6146 277.475 94.2925 274.804L3.16435 170.005C-3.92261 161.854 1.66994 148.873 12.2682 148.873H69.0378C72.5103 148.873 75.8196 150.398 78.1416 153.069L171.627 254.328Z" fill="currentColor"/>
+<path d="M171.627 24.6716C178.714 16.5214 177.581 0 166.982 0H107.24C103.768 0 96.6146 1.52506 94.2925 4.1955L3.16435 108.995C-3.9226 117.146 1.66994 130.126 12.2682 130.126H69.0378C72.5103 130.126 75.8196 128.601 78.1416 125.931L171.627 24.6716Z" fill="currentColor"/></symbol></svg>
+<div class="bg"><div class="scrim"></div><div class="grain"></div><div class="vignette"></div></div>
+<div class="progress" id="progress"></div>
+
+<div class="hint" id="hint"><span class="key">←</span><span class="key">→</span> of de knoppen</div>
+
+<div class="stage" id="stage">
+
+  <!-- 1 COVER -->
+  <section class="slide" data-label="Recruitment AI">
+    <div class="slide-inner">
+      <div class="brand r" style="--i:0">
+        <svg class="mark" viewBox="0 0 1420 279" role="img" aria-label="Convisto"><use href="#logo"/></svg>
+      </div>
+      <div class="seal r" style="--i:5">vrijdag · samenwerking</div>
+      <div class="kicker r" style="--i:0">Strategische bespreking · Gianluca × Sander</div>
+      <h1 class="r" style="--i:1">Recruitment&nbsp;AI</h1>
+      <p class="lead r mt-s" style="--i:2">Niet de vraag of we meedoen.<br>De vraag is <em>wat</em> we bouwen — en wat technisch, juridisch en commercieel écht kan.</p>
+      <div class="cover-meta r" style="--i:3">
+        <div class="m"><div class="lab">Onderwerp</div><div class="val">AI recruitment platform</div></div>
+        <div class="m"><div class="lab">Rol</div><div class="val">Design &amp; development partner</div></div>
+        <div class="m"><div class="lab">Beslissing</div><div class="val">Smal beginnen of alles ineens</div></div>
+      </div>
+      <p class="tiny r" style="--i:4">30 slides · eerlijke analyse · navigeer met de pijltjes of de knoppen rechtsonder</p>
+    </div>
+  </section>
+
+  <!-- A ORIGINELE VRAAG -->
+  <section class="slide" data-label="Je oorspronkelijke vraag">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Waar het mee begon</div>
+      <h2 class="r" style="--i:1">Wat je voor ogen had</h2>
+      <p class="lead r" style="--i:2">Eén AI-platform dat recruiters sneller laat werven en vacatures automatisch promoot. Minder manueel werk, betere kandidaten, lagere kost.</p>
+      <div class="grid g4 mt r" style="--i:3">
+        <div class="card"><h3>Kandidaten vinden</h3><p>Automatisch sourcen op LinkedIn, VDAB en Indeed.</p></div>
+        <div class="card"><h3>Vacatures promoten</h3><p>Automatische campagnes via Meta en Google.</p></div>
+        <div class="card"><h3>Budget optimaliseren</h3><p>AI past advertenties en budget continu aan.</p></div>
+        <div class="card"><h3>Traject automatiseren</h3><p>Van advertentie tot sollicitant in één doorlopend traject.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">Het doel: <strong>sneller de juiste mensen, lagere kost-per-hire, minder handwerk.</strong></p>
+    </div>
+  </section>
+
+  <!-- 2 DE VRAAG -->
+  <section class="slide" data-label="De vraag van vandaag">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Het kader</div>
+      <h2 class="r" style="--i:1">De beslissing is niet <em>“doen we mee”</em>.</h2>
+      <p class="lead r" style="--i:2">Het idee heeft potentieel, maar vooral in een klein, sterk deel van wat er nu op papier staat. De echte keuze vrijdag: welke versie bouwen we?</p>
+      <div class="paths mt r" style="--i:3">
+        <div class="path wig">
+          <div class="tag">Optie A · smal beginnen</div>
+          <h3>Eén scherp product</h3>
+          <p>Eén ding heel goed doen: vacatures slim laten adverteren voor kleine Vlaamse kantoren. Mag van de regels, snel te bouwen, en je kan het echt verkopen. Hier zit de waarde.</p>
+        </div>
+        <div class="path platform">
+          <div class="tag">Optie B · alles ineens</div>
+          <h3>Het all-in-one platform</h3>
+          <p>Kandidaten zoeken, matchen, gegevens binnenhalen, alles voor iedereen. Juridisch riskant, te zwaar voor ons, en kansloos tegen grote spelers.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 HET PLAN -->
+  <section class="slide" data-label="Het plan op tafel">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Het businessplan zoals het er ligt</div>
+      <h2 class="r" style="--i:1">Eén platform dat alles belooft</h2>
+      <div class="grid g3 mt r" style="--i:2">
+        <div class="card"><div class="num">01</div><h3>Kandidaten zoeken</h3><p>Profielen binnenhalen van LinkedIn, VDAB, Indeed.</p></div>
+        <div class="card"><div class="num">02</div><h3>AI Matching</h3><p>Matchscores via NLP en vector databases.</p></div>
+        <div class="card"><div class="num">03</div><h3>Meta Ads</h3><p>Automatische Facebook- en Instagramcampagnes.</p></div>
+        <div class="card"><div class="num">04</div><h3>Google Ads</h3><p>Search, Display, Performance Max automation.</p></div>
+        <div class="card"><div class="num">05</div><h3>A/B Testing</h3><p>Zelflerende advertentie-optimalisatie.</p></div>
+        <div class="card"><div class="num">06</div><h3>Analytics + 8× ATS</h3><p>Dashboards en integraties met Bullhorn, Greenhouse…</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:3">Ambitie in het plan: <strong>250 klanten en €1,8M omzet per jaar tegen jaar 3</strong>. Dat is waar we straks eerlijk naar moeten kijken.</p>
+    </div>
+  </section>
+
+  <!-- 4 MARKT -->
+  <section class="slide" data-label="De markt">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Marktrealiteit</div>
+      <h2 class="r" style="--i:1">Verzadigd, niet open</h2>
+      <div class="flex gap mt items-end r" style="--i:2;flex-wrap:wrap">
+        <div><div class="stat" data-count="428" data-suffix="%">0</div><div class="stat-label">groei in AI-recruiting adoptie ’23→’25</div></div>
+        <div><div class="stat" data-count="800" data-suffix="M+">0</div><div class="stat-label">profielen in databank HireEZ alleen al</div></div>
+        <div><div class="stat">€15<span class="unit">– €250k/jr</span></div><div class="stat-label">prijsrange van bestaande spelers</div></div>
+      </div>
+      <div class="mt r" style="--i:3;max-width:760px">
+        <div class="bar-row"><div class="bar-name">Manatal</div><div class="bar-track"><div class="bar-fill" style="--w:8%"></div></div><div class="bar-val">$15/u/mnd</div></div>
+        <div class="bar-row"><div class="bar-name">HireEZ</div><div class="bar-track"><div class="bar-fill" style="--w:30%"></div></div><div class="bar-val">$169/mnd</div></div>
+        <div class="bar-row"><div class="bar-name">Gem / SeekOut</div><div class="bar-track"><div class="bar-fill" style="--w:55%"></div></div><div class="bar-val">enterprise</div></div>
+        <div class="bar-row"><div class="bar-name">HireVue</div><div class="bar-track"><div class="bar-fill" style="--w:90%"></div></div><div class="bar-val">$35k+/jr</div></div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">Op elk prijsniveau zit al een goed gefinancierde speler. <strong>Breed gaan beschermt je hier niet. Het verraadt een gebrek aan focus.</strong></p>
+    </div>
+  </section>
+
+  <!-- B CONCURRENTIE -->
+  <section class="slide" data-label="Het speelveld">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Wie er al is</div>
+      <h2 class="r" style="--i:1">Het speelveld en hun positionering</h2>
+      <div class="grid g3 mt r" style="--i:2">
+        <div class="card"><h3>HireEZ</h3><p>Zoekt breed, 800M+ profielen, benadert kandidaten automatisch. Middelgrote en grote bedrijven.</p></div>
+        <div class="card"><h3>SeekOut</h3><p>Technische profielen en diversiteit, zoekt diep op het web. Grote bedrijven.</p></div>
+        <div class="card"><h3>Gem</h3><p>Klantenbeheer voor recruiters, met benadering en cijfers over het hele traject.</p></div>
+        <div class="card"><h3>Manatal</h3><p>Goedkoop kandidatensysteem met AI-matching, vanaf $15 per gebruiker. Kleine teams.</p></div>
+        <div class="card"><h3>Paradox / Eightfold</h3><p>Kandidaten screenen via chat, en AI rond competenties voor grote bedrijven.</p></div>
+        <div class="card glow-gold"><h3>Skillerjobs (BE)</h3><p>Kandidaten aantrekken, AI-vacatures, €30 tot 75 per sollicitant. Onze dichtste buur.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:3">Waar wij zitten: <strong>kleine Vlaamse kantoren, automatisch adverteren op Meta, Google en LinkedIn, met VDAB erin.</strong> De hoek die de grote spelers links laten liggen.</p>
+    </div>
+  </section>
+
+  <!-- 5 PAINKILLER -->
+  <section class="slide" data-label="Wie betaalt hier echt voor">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Voor wie is dit echt nodig</div>
+      <h2 class="r" style="--i:1">Moetje of leukje?</h2>
+      <p class="lead r" style="--i:2">Mensen betalen elke maand alleen voor iets dat ze écht nodig hebben. Wie heeft dit echt nodig, en wie niet?</p>
+      <div class="grid g2 mt r" style="--i:3">
+        <div class="card glow-sage">
+          <div class="chip yes mb-s"><span>✓</span> Een moetje</div>
+          <h3>Recruitment- &amp; uitzendkantoren</h3>
+          <p>Vacatures vullen is letterlijk hun omzet. Wat een aanwerving kost en hoe lang ze duurt, raakt hun resultaat elke maand. Een lagere kost per sollicitant betalen ze graag.</p>
+        </div>
+        <div class="card glow-clay">
+          <div class="chip no mb-s"><span>✕</span> Een leukje</div>
+          <h3>Interne KMO-HR</h3>
+          <p>Werven een paar keer per jaar, gebruiken het zelden, en zeggen het abonnement snel weer op. Het plan mikt op deze groep mee. Dat is een fout.</p>
+        </div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">De waarde zit bij <strong>continu wervende kantoren</strong>, niet bij interne HR.</p>
+    </div>
+  </section>
+
+  <!-- 6 ALL-IN-ONE VAL -->
+  <section class="slide" data-label="De valkuil van alles tegelijk">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Positionering</div>
+      <h2 class="r" style="--i:1">“Alles in één” is geen sterkte</h2>
+      <p class="lead r" style="--i:2">Hoe meer je belooft, hoe vager het wordt. De verkoop duurt langer, en op elk los onderdeel verlies je van een tool die alleen dát doet, en het beter doet.</p>
+      <ul class="ilist mt r" style="--i:3">
+        <li><span class="mk clay">✕</span><span>Op <strong>kandidaten zoeken</strong> verlies je van HireEZ en SeekOut met honderden miljoenen profielen.</span></li>
+        <li><span class="mk clay">✕</span><span>Je kan niet <strong>winnen op functies</strong> tegen spelers met tientallen miljoenen aan kapitaal.</span></li>
+        <li><span class="mk gold">→</span><span>Eén duidelijke belofte voor één doelgroep verslaat tien halve beloftes voor iedereen.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 7 LINKEDIN SOURCING KAN NIET -->
+  <section class="slide theme-black" data-label="LinkedIn — kandidaten zoeken">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Wat technisch kan en niet kan · 1</div>
+      <h2 class="r" style="--i:1">De kern van het plan <em class="clay">kan niet</em></h2>
+      <p class="lead r" style="--i:2">Feature één is LinkedIn scrapen. Niet via scraping, niet via API, niet via MCP. Er bestaat geen legale weg om hun databank uit te lezen op onze schaal.</p>
+      <div class="grid g3 mt r" style="--i:3">
+        <div class="card glow-clay"><h3>ToS &amp; rechtszaken</h3><p>LinkedIn klaagt scrapers herhaaldelijk aan: injunctie, data vernietigen, schadevergoeding.</p></div>
+        <div class="card glow-clay"><h3>GDPR in België</h3><p>Persoonsgegevens van mensen zonder toestemming. Dubbele blootstelling die de VS-zaken niet hebben.</p></div>
+        <div class="card glow-clay"><h3>Proxycurl, juli 2025</h3><p>De marktleider die LinkedIn-data via API doorverkocht, ging dood na een LinkedIn-rechtszaak.</p></div>
+      </div>
+      <p class="tiny r" style="--i:4">Een vendor huren wast de herkomst niet. De data komt nog steeds van LinkedIn, en je datalaag kan van vandaag op morgen verdwijnen.</p>
+    </div>
+  </section>
+
+  <!-- 8 LINKEDIN KAN WEL -->
+  <section class="slide" data-label="LinkedIn — wat kan wel">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Wat technisch kan en niet kan · 2</div>
+      <h2 class="r" style="--i:1">LinkedIn <em class="sage">koppelen</em> kan wél — drie wegen</h2>
+      <p class="sub r" style="--i:2">Data komt met toestemming naar jou, óf jij duwt naar LinkedIn. Nooit jij die hun databank uitleest.</p>
+      <div class="grid g3 mt r" style="--i:3">
+        <div class="card glow-sage"><div class="chip yes mb-s"><span>★</span> Past op ons</div><h3>Ads API</h3><p>Vacatureadvertenties programmatisch beheren naast Meta en Google. Development-tier tot 5 ad accounts. Partner-aanvraag, ~$699+/mnd.</p></div>
+        <div class="card glow-sage"><div class="chip yes mb-s"><span>✓</span> Gratis</div><h3>Sign in with LinkedIn</h3><p>Kandidaat logt in en deelt zelf zijn basisprofiel. Honderd procent compliant, want de toestemming ligt bij de persoon.</p></div>
+        <div class="card"><div class="chip mb-s" style="color:var(--muted)"><span>~</span> Alleen als ATS</div><h3>Job Posting / RSC</h3><p>Vacatures publiceren en syncen met Recruiter. Zwaar, partner-gated, vereist Recruiter Corporate (~$900/mnd/seat). Geen sourcing.</p></div>
+      </div>
+      <p class="tiny r" style="--i:4">Definitief dood: de oude people- en connections-endpoints. Profielen zoeken via de officiële API komt niet terug.</p>
+    </div>
+  </section>
+
+  <!-- 9 VDAB -->
+  <section class="slide" data-label="VDAB — de echte databron">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Wat technisch kan en niet kan · 3</div>
+      <h2 class="r" style="--i:1">VDAB is de <em class="sage">propere</em> databron</h2>
+      <p class="lead r" style="--i:2">Een volwaardig, gratis API-programma. Gedocumenteerde REST-koppelingen — precies het soort waar wij snel mee werken.</p>
+      <div class="grid g4 mt r" style="--i:3">
+        <div class="card glow-sage"><h3>Profiel API</h3><p>Profielen van werkzoekenden die toestemming gaven om met VDAB-partners te delen. De legale “sourcing”.</p></div>
+        <div class="card glow-sage"><h3>Vacature API</h3><p>Vacatures ophalen en filteren uit hun jobdatabank.</p></div>
+        <div class="card glow-sage"><h3>Vacature Posting</h3><p>Vacatures automatisch op vdab.be publiceren. Gratis.</p></div>
+        <div class="card glow-sage"><h3>Competent</h3><p>Open beroepscompetentiedata om matching te voeden.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">Beperking, eerlijk: <strong>Vlaanderen, actieve werkzoekenden met toestemming.</strong> Geen passieve toppers. Dat herschikt de ICP naar KMO- en volumerekrutering — precies de juiste niche.</p>
+    </div>
+  </section>
+
+  <!-- 10 MIJNENVELD -->
+  <section class="slide theme-black" data-label="Het juridische mijnenveld">
+    <div class="slide-inner">
+      <div class="flex gap" style="align-items:center;flex-wrap:wrap">
+        <div style="flex:1;min-width:280px">
+          <div class="kicker r" style="--i:0">Risico</div>
+          <p class="quote r" style="--i:1">Gehuurd of zelf gelegd — het blijft <em>hetzelfde mijnenveld.</em></p>
+        </div>
+        <div style="flex:1;min-width:280px">
+          <ul class="ilist r" style="--i:2">
+            <li><span class="mk clay">✕</span><span><strong>ToS-breuk</strong> bij scraping, ook via een tussenpartij.</span></li>
+            <li><span class="mk clay">✕</span><span><strong>GDPR</strong> op niet-consensuele profielen — onze grootste blootstelling.</span></li>
+            <li><span class="mk clay">✕</span><span><strong>Vendor-risk:</strong> je datalaag kan door een bevel offline gaan (Proxycurl).</span></li>
+            <li><span class="mk clay">✕</span><span><strong>Exit kapot:</strong> due diligence vindt LinkedIn-data en de overnemer stapt weg.</span></li>
+          </ul>
+        </div>
+      </div>
+      <p class="sub mt r" style="--i:3">Voor een tool die je zélf gebruikt: grijze zone. Voor een <strong>product dat je wil verkopen en schalen</strong>: nee.</p>
+    </div>
+  </section>
+
+  <!-- SKILLERJOBS -->
+  <section class="slide" data-label="Skillerjobs — het bewijs">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Referentie · een werkend model in België</div>
+      <h2 class="r" style="--i:1">Hoe Skillerjobs het doet</h2>
+      <p class="lead r" style="--i:2">Hun belofte: <em>“Don’t search, be found.”</em> Geen scraping, geen databank. Kandidaten komen naar de werkgever via slimme jobmarketing en AI-matching.</p>
+      <div class="grid g4 mt r" style="--i:3">
+        <div class="card glow-sage"><h3>Aantrekken, niet zoeken</h3><p>Niet wroeten in andermans databank, maar kandidaten naar je toe laten komen. Omzeilt het hele juridische probleem.</p></div>
+        <div class="card"><h3>AI-vacatures</h3><p>AI schrijft advertenties die de bedrijfscultuur weerspiegelen en de juiste mensen aantrekken.</p></div>
+        <div class="card"><h3>AI-matching op kwaliteit</h3><p>Matcht op meer dan kwalificaties, ook waarden, en filtert zwakke sollicitaties weg.</p></div>
+        <div class="card glow-gold"><h3>Betalen per sollicitant</h3><p>€30 tot 75 per sollicitant, met een maximum dat de klant zelf instelt. Geen vast abonnement.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">Twee lessen: je verdient het best <strong>per resultaat</strong>, niet met €149 tot 999 per maand. En zo'n tool wérkt, maar zij zitten al in een deel van deze markt. Onze hoek: <strong>kleine Vlaamse kantoren, adverteren op meerdere kanalen tegelijk, met VDAB erin.</strong></p>
+    </div>
+  </section>
+
+  <!-- C WAAROM KAN -->
+  <section class="slide" data-label="Waarom dit kan">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Haalbaarheid</div>
+      <h2 class="r" style="--i:1">Waarom dit wél kan</h2>
+      <div class="grid g4 mt r" style="--i:2">
+        <div class="card glow-sage"><h3>Compliant data bestaat</h3><p>VDAB-toestemmingsprofielen plus officiële ad-API's. Geen scraping nodig.</p></div>
+        <div class="card glow-sage"><h3>De vraag is bewezen</h3><p>Skillerjobs draait al op dit model in België.</p></div>
+        <div class="card glow-sage"><h3>Reuzen negeren de niche</h3><p>Te klein voor HireEZ en co, groot genoeg voor ons.</p></div>
+        <div class="card glow-sage"><h3>Snel te bouwen</h3><p>Bestaande koppelingen aan elkaar knopen, geen jaren programmeerwerk.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:3">Geen luchtkasteel: elk stuk steunt op iets dat <strong>vandaag al werkt.</strong></p>
+    </div>
+  </section>
+
+  <!-- 11 DE WIG -->
+  <section class="slide" data-label="Wat we eerst bouwen">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Het voorstel · het product</div>
+      <h2 class="r" style="--i:1">Laat alles weg, hou <em class="sage">één sterk ding</em> over</h2>
+      <p class="lead r" style="--i:2"><strong>Recruitment marketing automation voor kleine Vlaamse kantoren.</strong> Recruiters die geen marketeer zijn, maar wel continu vacatures moeten vullen en hun advertentiebudget verspillen.</p>
+      <div class="grid g4 mt r" style="--i:3">
+        <div class="card"><h3>Echte pijn</h3><p>Meetbare ROI: lagere kost per kwalitatieve sollicitant.</p></div>
+        <div class="card"><h3>Vlaams &amp; NL</h3><p>In het Nederlands, met VDAB-publicatie ingebouwd.</p></div>
+        <div class="card"><h3>KMO-priced</h3><p>Geprijsd voor het segment dat de reuzen negeren.</p></div>
+        <div class="card"><h3>Verdedigbaar</h3><p>Niet via tech, wél via taal, lokalisatie, service en domein.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">Dit is letterlijk het <strong>SmartDraft-recept</strong>, toegepast op recruitment-advertenties.</p>
+    </div>
+  </section>
+
+  <!-- ICP -->
+  <section class="slide" data-label="Voor wie precies">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">De ideale klant</div>
+      <h2 class="r" style="--i:1">Voor wie we dit bouwen</h2>
+      <p class="lead r" style="--i:2">Kleine Vlaamse recruitment- en uitzendkantoren, 2 tot 15 recruiters, die continu vacatures moeten vullen en geen marketeer in huis hebben.</p>
+      <div class="grid g3 mt r" style="--i:3">
+        <div class="card"><h3>Wie</h3><p>Recruitment- en uitzendkantoren, 2 tot 15 recruiters. De zaakvoerder beslist, korte lijnen.</p></div>
+        <div class="card"><h3>Sectoren</h3><p>Blue collar, techniek, logistiek, sales, horeca. Volume- en doorlooprollen.</p></div>
+        <div class="card"><h3>Waarom nu</h3><p>Wat een aanwerving kost en hoe lang ze duurt, raakt hun resultaat elke maand. Werven is hun omzet.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">Niet voor: grote bedrijven, het afsnoepen van passieve IT-profielen, of een interne HR-afdeling die zelden werft. Daar verlies je, of ze haken snel af.</p>
+    </div>
+  </section>
+
+  <!-- WAARDE ICP -->
+  <section class="slide" data-label="Wat het hen oplevert">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">De waarde · concreet</div>
+      <h2 class="r" style="--i:1">Wat het kantoor eraan heeft</h2>
+      <p class="lead r" style="--i:2">Nu: advertenties op gevoel, geen cijfers, hoge kost per sollicitant. Met de tool: advertenties die de AI schrijft in het Nederlands, automatisch op Meta, Google en LinkedIn, met een helder overzicht.</p>
+      <div class="grid g3 mt r" style="--i:3">
+        <div class="card glow-sage"><div class="num">Kost per sollicitant</div><div class="stat sage">−40%</div><p class="mt-s">Illustratief: van ~€50 naar ~€25 tot €30 per gekwalificeerde sollicitant.</p></div>
+        <div class="card glow-sage"><div class="num">Tijd tot invulling</div><div class="stat sage">dagen</div><p class="mt-s">In plaats van weken. Snellere plaatsing, sneller je commissie.</p></div>
+        <div class="card glow-sage"><div class="num">Geen marketeer</div><div class="stat sage">0</div><p class="mt-s">De recruiter hoeft geen Meta- of Google-expert te zijn.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">Eén extra of snellere plaatsing per maand is al duizenden euro waard. Een permanente plaatsing is vaak 15 tot 25% van het jaarloon. <strong>De tool betaalt zich met één plaatsing veelvoudig terug.</strong></p>
+    </div>
+  </section>
+
+  <!-- 12 ARCHITECTUUR -->
+  <section class="slide" data-label="Wat we bouwen">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">De aanbeveling · architectuur</div>
+      <h2 class="r" style="--i:1">Geen gegevens stelen, geen eigen databank</h2>
+      <div class="arch mt r" style="--i:2">
+        <div class="col">
+          <div class="head">Input — compliant</div>
+          <div class="node"><span class="t">VDAB</span>Profielen &amp; vacatures, met toestemming</div>
+          <div class="node"><span class="t">Klant</span>Eigen kandidaten- &amp; vacaturegegevens</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="col">
+          <div class="head">Engine</div>
+          <div class="node"><span class="t">AI</span>Advertenties &amp; copy in het NL</div>
+          <div class="node"><span class="t">Automatisch</span>Adverteren op Meta · Google · LinkedIn</div>
+          <div class="node"><span class="t">Optimalisatie</span>Budget &amp; targeting, zelflerend per sector</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="col">
+          <div class="head">Output</div>
+          <div class="node"><span class="t">Traject</span>Kandidaten + opvolging</div>
+          <div class="node"><span class="t">Overzicht</span>Kost per sollicitant · doorlooptijd · opbrengst</div>
+        </div>
+      </div>
+      <p class="sub mt-s r" style="--i:3">Voor elk onderdeel uit het plan is er een <strong>variant die wél mag</strong>, behalve dat ene stuk dat sowieso niet kon.</p>
+    </div>
+  </section>
+
+  <!-- HOE WERKT HET -->
+  <section class="slide" data-label="Hoe het werkt">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">In gewone taal</div>
+      <h2 class="r" style="--i:1">Hoe het werkt, simpel uitgelegd</h2>
+      <p class="lead r" style="--i:2">Stel: een kantoor zoekt vijf magazijniers. Wat gebeurt er?</p>
+      <ul class="ilist mt r" style="--i:3">
+        <li><span class="mk gold">1</span><span>De recruiter plakt de vacature in de tool. <strong>De AI schrijft er meteen wervende advertenties bij</strong>, in het Nederlands.</span></li>
+        <li><span class="mk gold">2</span><span>De tool <strong>zet de advertenties zelf live</strong> op Facebook, Instagram en Google, met een ingesteld budget.</span></li>
+        <li><span class="mk gold">3</span><span>Geïnteresseerden landen op een <strong>simpele sollicitatiepagina</strong> met een paar vragen.</span></li>
+        <li><span class="mk gold">4</span><span>De recruiter ziet <strong>alle kandidaten op één plek</strong>, plus wat elke aanwerving kostte.</span></li>
+        <li><span class="mk gold">5</span><span>De tool <strong>leert bij</strong>: wat werkt krijgt meer budget, wat niet werkt valt weg.</span></li>
+      </ul>
+      <p class="sub mt-s r" style="--i:4">Geen marketingkennis nodig. De recruiter doet wat hij goed kan, de tool doet de rest.</p>
+    </div>
+  </section>
+
+  <!-- 13 MOAT -->
+  <section class="slide" data-label="Waarom juist wij">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Het voorstel · waar de waarde zit</div>
+      <h2 class="r" style="--i:1">Het verschil zit in jouw kantoor, niet in de software</h2>
+      <p class="lead r" style="--i:2">De waardevolste asset is niet de code. Het is <strong>jouw kantoor.</strong></p>
+      <div class="grid g4 mt r" style="--i:3">
+        <div class="card glow-gold"><h3>Echte testomgeving</h3><p>Echte vacatures om op te bouwen en te testen, vanaf dag één.</p></div>
+        <div class="card glow-gold"><h3>Eerste klant</h3><p>Bewijs lagere kost-per-hire op echt werk.</p></div>
+        <div class="card glow-gold"><h3>Case study</h3><p>Het verhaal voor elke volgende klant.</p></div>
+        <div class="card glow-gold"><h3>Kanaal</h3><p>Jouw netwerk van collega-recruiters.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">Zonder dat kantoor is dit zomaar weer een AI-tooltje. <strong>Mét</strong> heb je een echt startverhaal.</p>
+    </div>
+  </section>
+
+  <!-- D KOSTEN BOUWEN -->
+  <section class="slide" data-label="Kosten — bouwen">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Investering · ruwe inschatting</div>
+      <h2 class="r" style="--i:1">Wat kost het om te bouwen</h2>
+      <div class="grid g2 mt r" style="--i:2">
+        <div class="card glow-gold">
+          <div class="num">Fase 0 · MVP voor jouw kantoor</div>
+          <div class="stat">€6–15k</div>
+          <p class="mt-s">Eerste werkende versie: advertenties, sollicitatietraject en overzicht, op jouw eigen vacatures.</p>
+        </div>
+        <div class="card glow-gold">
+          <div class="num">Fase 2 · productiseren tot SaaS</div>
+          <div class="stat">€15–40k</div>
+          <p class="mt-s">Geschikt voor meerdere kantoren, extra koppelingen en begeleiding bij de start.</p>
+        </div>
+      </div>
+      <p class="tiny r" style="--i:3">Ruwe ranges, geen offerte. Hangt af van scope, aantal integraties en hoeveel we kunnen hergebruiken.</p>
+    </div>
+  </section>
+
+  <!-- E KOSTEN LOPEND -->
+  <section class="slide" data-label="Kosten — lopend">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Lopende kosten · ruwe inschatting</div>
+      <h2 class="r" style="--i:1">Wat kost het om te draaien</h2>
+      <ul class="ilist mt r" style="--i:2">
+        <li><span class="mk gold">→</span><span><strong>AI / LLM API</strong> voor advertenties en matching: €100 tot €800 per maand, schaalt met volume.</span></li>
+        <li><span class="mk gold">→</span><span><strong>Hosting en infrastructuur:</strong> €50 tot €300 per maand.</span></li>
+        <li><span class="mk gold">→</span><span><strong>Automatisering en tooling</strong> zoals n8n: €50 tot €200 per maand.</span></li>
+        <li><span class="mk gold">→</span><span><strong>LinkedIn Ads API</strong> (optioneel): vanaf ongeveer €650 per maand als je dat kanaal aanzet.</span></li>
+      </ul>
+      <p class="sub mt-s r" style="--i:3">Ruwe vaste kosten in het begin: <strong>€300 tot €1.500 per maand</strong>, exclusief advertentiebudget. Dat budget op Meta en Google is de campagnekost van de klant zelf, geen platformkost.</p>
+    </div>
+  </section>
+
+  <!-- REKENVOORBEELD -->
+  <section class="slide" data-label="Een voorbeeld in cijfers">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Even concreet</div>
+      <h2 class="r" style="--i:1">Eén vacature, in cijfers</h2>
+      <p class="lead r" style="--i:2">Een kantoor plaatst iemand voor €4.000 commissie. Wat levert de tool op die ene plaatsing?</p>
+      <div class="grid g3 mt r" style="--i:3">
+        <div class="card glow-clay"><div class="num">Nu · op gevoel</div><div class="stat clay" style="font-size:clamp(26px,3vw,44px)">~€50</div><p class="mt-s">kost per sollicitant, veel handwerk, advertenties zonder plan.</p></div>
+        <div class="card glow-sage"><div class="num">Met de tool</div><div class="stat sage" style="font-size:clamp(26px,3vw,44px)">~€25</div><p class="mt-s">kost per sollicitant, automatisch, advertenties die de AI optimaliseert.</p></div>
+        <div class="card glow-gold"><div class="num">Eén plaatsing extra</div><div class="stat accent" style="font-size:clamp(26px,3vw,44px)">€4.000</div><p class="mt-s">commissie. Daar staat hooguit een paar honderd euro tool- en advertentiekost tegenover.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">De rekensom is simpel: <strong>de tool kost een fractie van wat één extra of snellere plaatsing opbrengt.</strong></p>
+    </div>
+  </section>
+
+  <!-- VERDIENMODEL -->
+  <section class="slide" data-label="Verdienmodel">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Verdienmodel · schets</div>
+      <h2 class="r" style="--i:1">Hoe het geld binnenkomt</h2>
+      <p class="lead r" style="--i:2">Niet enkel een vast abonnement zoals in het plan. Een prijs die meebeweegt met het resultaat, zoals Skillerjobs het doet. Zo blijven klanten langer.</p>
+      <div class="grid g3 mt r" style="--i:3">
+        <div class="card glow-gold"><h3>Vast per maand</h3><p>€99 tot €199 per kantoor. Toegang, overzicht en de advertentieteksten.</p></div>
+        <div class="card glow-gold"><h3>Per resultaat</h3><p>€15 tot €30 per geschikte sollicitant, of 10 tot 15% bovenop het advertentiebudget dat wij beheren.</p></div>
+        <div class="card glow-gold"><h3>Setup</h3><p>Eenmalige onboarding-fee per kantoor om de omgeving op te zetten.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">De prijs volgt het resultaat. De klant betaalt meer naarmate het werkt, dus <strong>ze blijven langer dan bij een kaal abonnement.</strong></p>
+    </div>
+  </section>
+
+  <!-- POTENTIEEL -->
+  <section class="slide" data-label="Wat het kan opleveren">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Potentieel · groeipad</div>
+      <h2 class="r" style="--i:1">Wat het kan opleveren</h2>
+      <p class="lead r" style="--i:2">Bij gemiddeld €400 tot €800 per kantoor per maand. Drukke kantoren leveren meer sollicitanten op, en dus meer omzet:</p>
+      <div class="grid g4 mt r" style="--i:3">
+        <div class="card"><div class="num">Bewijs · 10 kantoren</div><div class="stat" style="font-size:clamp(24px,2.6vw,38px)">€4–7k</div><p class="mt-s">per maand. Eerste betalende kantoren.</p></div>
+        <div class="card"><div class="num">Groei · 50 kantoren</div><div class="stat" style="font-size:clamp(24px,2.6vw,38px)">€25–45k</div><p class="mt-s">per maand. Een draaiend product.</p></div>
+        <div class="card glow-sage"><div class="num">Schaal · 150 kantoren</div><div class="stat sage" style="font-size:clamp(24px,2.6vw,38px)">€75–130k</div><p class="mt-s">per maand. Vlaanderen plus Nederland.</p></div>
+        <div class="card glow-gold"><div class="num">Visie · 300+ kantoren</div><div class="stat accent" style="font-size:clamp(24px,2.6vw,38px)">€150k+</div><p class="mt-s">per maand, zo'n €1,8M+ per jaar. Met eigen merknaam voor anderen en KMO's erbij.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:4">Knoppen om aan te draaien: meer kantoren, meer sollicitanten per kantoor, uitbreiden naar Nederland, de tool onder de merknaam van grote uitzendgroepen aanbieden, en KMO's die veel werven rechtstreeks bedienen. <strong>Zo wordt de €1,8M per jaar uit het plan een doel met een route, geen loze belofte.</strong></p>
+    </div>
+  </section>
+
+  <!-- 14 FASERING -->
+  <section class="slide" data-label="Fasering">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">De aanpak · zo draaien we het risico om</div>
+      <h2 class="r" style="--i:1">Klein bewijzen, dan pas uitbouwen</h2>
+      <div class="tl mt r" style="--i:2">
+        <div class="phase p0"><div class="dot"></div><div class="ph">Fase 0 · bouwen</div><h3>Eerst voor jouw kantoor</h3><p>We bouwen de advertenties en het sollicitatietraject eerst voor jouw eigen bureau. Eén echte gebruiker, echte vacatures, vanaf dag één.</p></div>
+        <div class="phase p1"><div class="dot"></div><div class="ph">Fase 1 · valideren</div><h3>Echte cijfers</h3><p>Draaien op echte vacatures. Meet de kost per geschikte sollicitant en hoe snel een functie ingevuld raakt. Weken, geen jaren.</p></div>
+        <div class="phase p2"><div class="dot"></div><div class="ph">Fase 2 · productiseren</div><h3>Dunne SaaS</h3><p>Alleen als de cijfers kloppen: uitrollen naar andere Vlaamse kantoren. Official APIs only. Pas dan bouw je iets bewezen uit.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FASE 0 CONCREET -->
+  <section class="slide" data-label="Fase 0 concreet">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Fase 0 · concreet</div>
+      <h2 class="r" style="--i:1">Hoe fase 0 er concreet uitziet</h2>
+      <p class="lead r" style="--i:2">We bouwen de engine eerst voor jouw eigen kantoor, klein en scherp: één sector, twee kanalen (Meta en Google), in het Nederlands.</p>
+      <ul class="ilist mt r" style="--i:3">
+        <li><span class="mk gold">1</span><span><strong>AI-generator:</strong> vacature wordt advertentievarianten in het NL — titels, hooks, copy.</span></li>
+        <li><span class="mk gold">2</span><span><strong>Campagne-automatisering</strong> op Meta en Google via de officiële API's: opzet, targeting, budget.</span></li>
+        <li><span class="mk gold">3</span><span><strong>Landingspagina</strong> met sollicitatieformulier en een paar selectievragen.</span></li>
+        <li><span class="mk gold">4</span><span><strong>Kandidatenlijst en overzicht:</strong> kost per sollicitant, doorlooptijd, kwaliteit.</span></li>
+        <li><span class="mk gold">5</span><span><strong>Budget- en A/B-optimalisatie</strong> op basis van de resultaten.</span></li>
+      </ul>
+      <p class="sub mt-s r" style="--i:4">Ruwweg 4 tot 8 weken tot de eerste campagne live staat. Jij levert echte vacatures en toegang tot de advertentie-accounts. Doel: <strong>aantoonbaar een lagere kost per geschikte sollicitant, of sneller een functie ingevuld.</strong> Dat wordt je eerste succesverhaal.</p>
+    </div>
+  </section>
+
+  <!-- RISICOS -->
+  <section class="slide theme-black" data-label="Risico's en zorgen">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Eerlijk over de risico's</div>
+      <h2 class="r" style="--i:1">Wat als het tegenzit?</h2>
+      <div class="grid g2 mt r" style="--i:2">
+        <div class="card"><h3>VDAB zegt nee of traag</h3><p>De toegang tot hun profielen vraagt een akkoord. Geen ramp: we starten met adverteren en de eigen gegevens van het kantoor, VDAB komt erbij zodra het rond is.</p></div>
+        <div class="card"><h3>Advertenties leveren te weinig op</h3><p>Daarom fase 0 op jouw eigen vacatures, klein en meetbaar. Werkt het niet, dan weten we dat in weken, niet na een jaar bouwen.</p></div>
+        <div class="card"><h3>Skillerjobs en anderen</h3><p>Zij bewijzen dat de markt bestaat. Onze hoek is scherper: kleiner, Vlaamser, met VDAB en meerdere kanalen tegelijk.</p></div>
+        <div class="card"><h3>Regels rond LinkedIn</h3><p>We blijven met afstand binnen de lijntjes: alleen adverteren en kandidaten die zelf hun gegevens delen. Geen grijze zone.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:3">Het grootste risico is niet technisch. Het is <strong>te breed beginnen.</strong> Daar beschermt de aanpak ons tegen.</p>
+    </div>
+  </section>
+
+  <!-- 17 BESLISSING -->
+  <section class="slide" data-label="Wat we samen beslissen">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Wat we vrijdag samen beslissen</div>
+      <h2 class="r" style="--i:1">Drie keuzes om te starten</h2>
+      <ul class="ilist mt r" style="--i:2">
+        <li><span class="mk num">1</span><span>Starten we met <strong>jouw kantoor als eerste testcase</strong>, in plaats van meteen het volledige platform?</span></li>
+        <li><span class="mk num">2</span><span>Welke <strong>niche en kanalen</strong> pakken we eerst — blue collar, IT, sales — over Meta, Google en LinkedIn Ads?</span></li>
+        <li><span class="mk num">3</span><span>Wat is de <strong>scope van fase 0</strong>: wat moet absoluut werken voordat we breder gaan?</span></li>
+      </ul>
+      <div class="grid g2 mt r" style="--i:3">
+        <div class="card glow-sage"><h3 class="sage">Smal beginnen</h3><p>Start met één sterk onderdeel binnen de regels, bewijs het op jouw vacatures, bouw daarna uit.</p></div>
+        <div class="card glow-clay"><h3 class="clay">Alles ineens</h3><p>Het volledige plan in één keer: juridisch riskant, te zwaar voor ons, en kansloos tegen de grote spelers.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 18 AANBEVELING -->
+  <section class="slide theme-black" data-label="Aanbeveling">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Conclusie</div>
+      <p class="quote r" style="--i:1">Begin <em>smal.</em><br>Niet met alles.</p>
+      <p class="lead mt r" style="--i:2">De waardevolle versie is simpel: vacatures slim laten adverteren voor Vlaamse kantoren. Smal, duidelijk, met een resultaat dat je kan meten. Het businessplan dat nu voorligt is net het tegenovergestelde: het wil alles tegelijk.</p>
+      <div class="flex gap mt r" style="--i:3;flex-wrap:wrap">
+        <div class="chip yes">✓ Binnen de regels, met toestemming</div>
+        <div class="chip yes">✓ Betalen per resultaat</div>
+        <div class="chip yes">✓ Start bij jouw kantoor</div>
+        <div class="chip yes">✓ Eerst bewijzen, dan uitbreiden</div>
+      </div>
+      <p class="tiny r" style="--i:4">Volgende stap na vrijdag: alles op één pagina zetten, klaar om naast het businessplan te leggen.</p>
+    </div>
+  </section>
+
+</div>
+
+<!-- chrome -->
+<div class="brandmark" id="brandmark">
+  <svg class="mark" viewBox="0 0 1420 279" role="img" aria-label="Convisto"><use href="#logo"/></svg>
+</div>
+<div class="counter"><span class="cur" id="cur">01</span> / <span id="tot">18</span></div>
+<div class="slabel" id="slabel"></div>
+<div class="rail" id="rail"></div>
+<div class="nav">
+  <button class="navbtn" id="prev" aria-label="Vorige">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <button class="navbtn" id="next" aria-label="Volgende">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+</div>
+
+<script>
+(function(){
+  const slides=[...document.querySelectorAll('.slide')];
+  const total=slides.length;
+  let idx=0;
+  const cur=document.getElementById('cur');
+  const tot=document.getElementById('tot');
+  const prev=document.getElementById('prev');
+  const next=document.getElementById('next');
+  const progress=document.getElementById('progress');
+  const slabel=document.getElementById('slabel');
+  const rail=document.getElementById('rail');
+  const hint=document.getElementById('hint');
+  tot.textContent=String(total).padStart(2,'0');
+
+  // build rail
+  slides.forEach((s,i)=>{
+    const b=document.createElement('button');
+    b.setAttribute('aria-label','Ga naar slide '+(i+1));
+    b.addEventListener('click',()=>go(i));
+    rail.appendChild(b);
+  });
+  const dots=[...rail.children];
+
+  function animateCounters(slide){
+    slide.querySelectorAll('[data-count]').forEach(el=>{
+      const target=parseFloat(el.dataset.count);
+      const suffix=el.dataset.suffix||'';
+      const dur=1100; const t0=performance.now();
+      function tick(now){
+        const p=Math.min((now-t0)/dur,1);
+        const eased=1-Math.pow(1-p,3);
+        const val=Math.round(target*eased);
+        el.textContent=val.toLocaleString('nl-BE')+suffix;
+        if(p<1) requestAnimationFrame(tick);
+      }
+      el.textContent='0'+suffix;
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function go(n){
+    n=Math.max(0,Math.min(total-1,n));
+    if(n===idx && slides[idx].classList.contains('active')) return;
+    slides[idx].classList.remove('active');
+    idx=n;
+    const s=slides[idx];
+    s.classList.add('active');
+    let theme=s.classList.contains('theme-black')?'black':'silk';
+    document.body.classList.remove('t-silk','t-black');
+    document.body.classList.add('t-'+theme);
+    cur.textContent=String(idx+1).padStart(2,'0');
+    progress.style.width=((idx)/(total-1)*100)+'%';
+    slabel.textContent=s.dataset.label||'';
+    dots.forEach((d,i)=>d.classList.toggle('on',i===idx));
+    document.getElementById('brandmark').classList.toggle('hide',idx===0);
+    prev.disabled=idx===0;
+    next.disabled=idx===total-1;
+    // delay counters until reveals begin
+    setTimeout(()=>animateCounters(s),250);
+  }
+
+  function nextSlide(){go(idx+1)}
+  function prevSlide(){go(idx-1)}
+
+  prev.addEventListener('click',prevSlide);
+  next.addEventListener('click',nextSlide);
+
+  let hinted=false;
+  function dismissHint(){if(!hinted){hinted=true;hint.classList.add('gone')}}
+
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();nextSlide();dismissHint();}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();prevSlide();dismissHint();}
+    else if(e.key==='Home'){go(0);}
+    else if(e.key==='End'){go(total-1);}
+  });
+
+  // touch swipe
+  let tx=0;
+  document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});
+  document.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-tx;
+    if(Math.abs(dx)>55){dx<0?nextSlide():prevSlide();dismissHint();}
+  },{passive:true});
+
+  // click on slide right/left halves (ignore interactive)
+  document.getElementById('stage').addEventListener('click',e=>{
+    if(e.target.closest('button,a,.card,.path')) return;
+    const x=e.clientX/window.innerWidth;
+    if(x>0.62){nextSlide();dismissHint();}
+    else if(x<0.38){prevSlide();dismissHint();}
+  });
+
+  setTimeout(()=>{if(!hinted)hint.classList.add('gone')},6000);
+  go(0);
+})();
+</script>
+</body>
+</html>
