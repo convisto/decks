@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Isothermica — Convisto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@100..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0B0A18;
+  --ink-2:#120F26;
+  --ink-3:#1B1642;
+  --paper:#F1EFFA;
+  --paper-dim:#C2BEDE;
+  --muted:#938FB6;
+  --muted-2:#615C88;
+  --gold:#7C5CFF;
+  --gold-soft:#9D86FF;
+  --sage:#46E5B5;
+  --clay:#FF7A9C;
+  --line:rgba(238,236,250,0.12);
+  --line-soft:rgba(238,236,250,0.06);
+  --panel:rgba(238,236,250,0.04);
+  --shadow:0 30px 80px -20px rgba(0,0,0,0.8);
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;width:100%;overflow:hidden;background:var(--ink);color:var(--paper)}
+body{
+  font-family:"Sora",sans-serif;
+  -webkit-font-smoothing:antialiased;
+  letter-spacing:.005em;
+  position:relative;
+}
+/* atmospheric background */
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+  background:
+    radial-gradient(62% 72% at 30% 26%, rgba(124,92,255,0.20), transparent 60%),
+    radial-gradient(58% 66% at 80% 74%, rgba(91,63,224,0.16), transparent 62%),
+    radial-gradient(70% 60% at 50% 104%, rgba(45,24,120,0.30), transparent 72%),
+    #0B0A18;
+}
+.bg .scrim{position:absolute;inset:0;background:#242228;opacity:0;transition:opacity 1s var(--ease)}
+.bg .grain{
+  position:absolute;inset:0;opacity:.055;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.bg .vignette{position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 50%, transparent 55%, rgba(0,0,0,0.5))}
+body.t-black .bg .scrim{opacity:1}
+
+/* progress */
+.progress{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--gold-soft));width:0;z-index:50;transition:width .6s var(--ease);box-shadow:0 0 14px rgba(124,92,255,.5)}
+
+/* stage */
+.stage{position:relative;z-index:2;height:100vh;width:100vw}
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(28px,6vw,120px);
+  opacity:0;visibility:hidden;
+  transform:translateY(14px) scale(.992);
+  transition:opacity .55s var(--ease), transform .7s var(--ease), visibility 0s linear .7s;
+  pointer-events:none;
+}
+.slide.active{opacity:1;visibility:visible;transform:none;pointer-events:auto;transition:opacity .65s var(--ease) .05s, transform .8s var(--ease) .05s, visibility 0s}
+.slide-inner{max-width:1180px;width:100%;margin:0 auto}
+
+/* reveal system */
+.r{opacity:0;transform:translateY(22px);filter:blur(2px);transition:opacity .7s var(--ease-out), transform .8s var(--ease-out), filter .8s var(--ease-out)}
+.slide.active .r{opacity:1;transform:none;filter:none;transition-delay:calc(.12s + var(--i,0)*.085s)}
+
+/* typography */
+.kicker{display:inline-flex;align-items:center;gap:10px;font-size:clamp(11px,1vw,13px);font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:22px}
+.kicker::before{content:"";width:30px;height:1px;background:var(--gold);transform-origin:left;animation:none}
+.slide.active .kicker::before{animation:drawLine .8s var(--ease) .25s both}
+@keyframes drawLine{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+h1{font-family:"Sora",sans-serif;font-weight:380;font-size:clamp(40px,6.6vw,98px);line-height:.98;letter-spacing:-.015em}
+h2{font-family:"Sora",sans-serif;font-weight:400;font-size:clamp(30px,4.4vw,60px);line-height:1.03;letter-spacing:-.012em;margin-bottom:14px}
+h2 em{font-style:italic;color:var(--gold)}
+h1 em{font-style:italic;color:var(--gold)}
+.lead{font-size:clamp(16px,1.7vw,22px);line-height:1.5;color:var(--paper-dim);max-width:60ch;font-weight:300}
+.sub{font-size:clamp(14px,1.3vw,17px);line-height:1.6;color:var(--muted);max-width:64ch;font-weight:300}
+strong{font-weight:700;color:var(--paper)}
+.accent{color:var(--gold)}
+.sage{color:var(--sage)}
+.clay{color:var(--clay)}
+
+/* layout helpers */
+.grid{display:grid;gap:clamp(14px,1.6vw,22px)}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.flex{display:flex}
+.between{justify-content:space-between}
+.items-end{align-items:flex-end}
+.gap{gap:clamp(16px,2vw,40px)}
+.mt{margin-top:clamp(20px,3vw,44px)}
+.mt-s{margin-top:18px}
+.mb-s{margin-bottom:14px}
+
+/* card */
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:18px;
+  padding:clamp(18px,2vw,30px);position:relative;overflow:hidden;
+  backdrop-filter:blur(2px);
+  transition:transform .5s var(--ease), border-color .5s, background .5s;
+}
+.card:hover{transform:translateY(-4px);border-color:rgba(238,236,250,0.22);background:rgba(238,236,250,0.055)}
+.card .num{font-family:"Sora",sans-serif;font-size:13px;color:var(--muted-2);margin-bottom:12px;font-weight:500}
+.card h3{font-size:clamp(16px,1.5vw,20px);font-weight:700;margin-bottom:8px;letter-spacing:-.01em}
+.card p{font-size:clamp(13px,1.1vw,15px);line-height:1.5;color:var(--muted);font-weight:300}
+.card.glow-gold::before,.card.glow-sage::before,.card.glow-clay::before{content:"";position:absolute;top:0;left:0;width:100%;height:3px}
+.card.glow-gold::before{background:var(--gold)}
+.card.glow-sage::before{background:var(--sage)}
+.card.glow-clay::before{background:var(--clay)}
+
+/* stat */
+.stat{font-family:"Sora",sans-serif;font-weight:420;font-size:clamp(34px,4.8vw,64px);line-height:1;letter-spacing:-.02em}
+.stat .unit{font-size:.42em;color:var(--muted);font-family:"Sora",sans-serif;font-weight:500;margin-left:4px;letter-spacing:0}
+.stat-label{font-size:13px;color:var(--muted);margin-top:8px;font-weight:400;letter-spacing:.02em}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;border:1px solid var(--line)}
+.chip.yes{color:var(--sage);border-color:rgba(70,229,181,.35);background:rgba(70,229,181,.07)}
+.chip.no{color:var(--clay);border-color:rgba(255,122,156,.35);background:rgba(255,122,156,.07)}
+.chip.brand{color:var(--gold);border-color:rgba(124,92,255,.35);background:rgba(124,92,255,.08)}
+.chip .ic{width:16px;height:16px;display:inline-flex}
+
+/* list */
+.ilist{list-style:none;display:flex;flex-direction:column;gap:14px}
+.ilist li{display:flex;gap:14px;align-items:flex-start;font-size:clamp(14px,1.2vw,16.5px);line-height:1.45;color:var(--paper-dim);font-weight:300}
+.ilist li .mk{flex:none;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;margin-top:1px;font-size:12px;font-weight:700}
+.mk.gold{background:rgba(124,92,255,.14);color:var(--gold)}
+.mk.sage{background:rgba(70,229,181,.14);color:var(--sage)}
+.mk.clay{background:rgba(255,122,156,.14);color:var(--clay)}
+.mk.num{background:rgba(238,236,250,.08);color:var(--paper);font-family:"Sora",sans-serif}
+
+/* bars */
+.bar-row{display:flex;align-items:center;gap:16px;margin-bottom:13px}
+.bar-name{width:clamp(90px,12vw,150px);font-size:14px;font-weight:600;flex:none}
+.bar-track{flex:1;height:10px;background:rgba(238,236,250,.06);border-radius:6px;overflow:hidden}
+.bar-fill{height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,var(--gold),var(--gold-soft));transition:width 1.1s var(--ease-out)}
+.slide.active .bar-fill{width:var(--w)}
+.bar-val{width:84px;text-align:right;font-size:14px;color:var(--muted);font-weight:500;flex:none;font-variant-numeric:tabular-nums}
+
+/* paths comparison */
+.paths{display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,2vw,28px)}
+.path{border-radius:20px;padding:clamp(22px,2.6vw,38px);border:1px solid var(--line);position:relative;overflow:hidden}
+.path.wig{background:linear-gradient(160deg,rgba(70,229,181,.10),rgba(70,229,181,.02));border-color:rgba(70,229,181,.32)}
+.path.platform{background:linear-gradient(160deg,rgba(255,122,156,.08),rgba(255,122,156,.015));border-color:rgba(255,122,156,.28)}
+.path .tag{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;margin-bottom:14px}
+.path.wig .tag{color:var(--sage)}.path.platform .tag{color:var(--clay)}
+.path h3{font-family:"Sora",sans-serif;font-weight:420;font-size:clamp(22px,2.4vw,34px);line-height:1.05;margin-bottom:14px;letter-spacing:-.01em}
+.path p{font-size:14.5px;line-height:1.5;color:var(--paper-dim);font-weight:300}
+
+/* timeline */
+.tl{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(14px,1.6vw,26px);margin-top:8px}
+.tl::before{content:"";position:absolute;top:30px;left:6%;right:6%;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+.phase{position:relative;text-align:left}
+.phase .dot{width:14px;height:14px;border-radius:50%;background:var(--ink);border:2px solid var(--gold);margin-bottom:18px;position:relative;z-index:2;box-shadow:0 0 0 6px var(--ink)}
+.phase.p1 .dot{border-color:var(--sage)}
+.phase.p2 .dot{border-color:var(--paper)}
+.phase .ph{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px}
+.phase h3{font-family:"Sora",sans-serif;font-weight:420;font-size:clamp(18px,1.8vw,24px);margin-bottom:10px;letter-spacing:-.01em}
+.phase p{font-size:13.5px;line-height:1.5;color:var(--muted);font-weight:300}
+
+/* deal scale */
+.scale{margin-top:clamp(16px,2vw,30px)}
+.scale-bar{height:54px;border-radius:14px;background:linear-gradient(90deg,rgba(70,229,181,.18),rgba(124,92,255,.18),rgba(255,122,156,.18));border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;color:var(--paper-dim);font-weight:600}
+.scale-labels{display:flex;justify-content:space-between;margin-top:12px;font-size:13px;color:var(--muted);font-weight:300;line-height:1.4}
+.scale-labels div{max-width:30%}
+
+/* arch flow */
+.arch{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:clamp(8px,1vw,18px);margin-top:8px}
+.arch .col{display:flex;flex-direction:column;gap:10px}
+.arch .node{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:13.5px;font-weight:500;color:var(--paper-dim);line-height:1.3}
+.arch .node .t{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);display:block;margin-bottom:4px;font-weight:700}
+.arch .arrow{color:var(--gold);font-size:22px;opacity:.7;text-align:center}
+.arch .head{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:4px;text-align:center}
+
+/* big quote */
+.quote{font-family:"Sora",sans-serif;font-weight:340;font-size:clamp(26px,3.6vw,50px);line-height:1.12;letter-spacing:-.012em;max-width:20ch}
+.quote em{font-style:italic;color:var(--gold)}
+
+/* nav */
+.nav{position:fixed;bottom:26px;right:30px;z-index:40;display:flex;align-items:center;gap:12px}
+.navbtn{
+  width:50px;height:50px;border-radius:50%;border:1px solid var(--line);
+  background:rgba(18,15,38,.6);backdrop-filter:blur(10px);color:var(--paper);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .35s var(--ease);
+}
+.navbtn:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-2px)}
+.navbtn:active{transform:scale(.94)}
+.navbtn:disabled{opacity:.28;cursor:default;transform:none;border-color:var(--line);color:var(--paper)}
+.navbtn svg{width:20px;height:20px}
+.counter{position:fixed;bottom:36px;left:30px;z-index:40;font-family:"Sora",sans-serif;font-size:15px;color:var(--muted);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.counter .cur{color:var(--paper);font-size:19px}
+
+/* dot rail */
+.rail{position:fixed;top:50%;right:18px;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:9px}
+.rail button{width:8px;height:8px;border-radius:50%;border:none;background:rgba(238,236,250,.2);cursor:pointer;padding:0;transition:all .3s var(--ease)}
+.rail button:hover{background:rgba(238,236,250,.45);transform:scale(1.3)}
+.rail button.on{background:var(--gold);transform:scale(1.4);box-shadow:0 0 10px rgba(124,92,255,.6)}
+
+/* slide label */
+.slabel{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);z-index:40;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-2);font-weight:600;white-space:nowrap}
+
+/* hint */
+.hint{position:fixed;top:24px;right:30px;z-index:40;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);font-weight:600;display:flex;align-items:center;gap:8px;opacity:.7;transition:opacity .5s}
+.hint.gone{opacity:0;pointer-events:none}
+.key{border:1px solid var(--line);border-radius:5px;padding:2px 7px;font-size:10px;color:var(--muted)}
+
+/* cover specifics */
+.cover-meta{display:flex;gap:34px;flex-wrap:wrap;margin-top:38px}
+.cover-meta .m .lab{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2);font-weight:700;margin-bottom:5px}
+.cover-meta .m .val{font-size:16px;color:var(--paper-dim);font-weight:400}
+.seal{position:absolute;top:clamp(28px,6vw,80px);right:clamp(28px,6vw,90px);font-family:"Sora",sans-serif;font-style:italic;font-size:14px;color:var(--muted);opacity:.8}
+
+/* slide themes */
+.slide.theme-black{
+  --paper:#F1F0EA;
+  --line:rgba(241,240,234,0.13);
+  --line-soft:rgba(241,240,234,0.06);
+  --panel:rgba(241,240,234,0.045);
+}
+
+/* brand / logo */
+.brand{display:flex;align-items:center;gap:15px;margin-bottom:30px}
+.brand .mark{height:clamp(32px,3.8vw,50px);width:auto;color:var(--paper);display:block}
+.brand .wm{font-family:"Sora",sans-serif;font-weight:700;font-size:clamp(30px,4vw,52px);letter-spacing:-.035em;color:var(--paper);line-height:1}
+.brandmark{position:fixed;top:26px;left:30px;z-index:40;display:flex;align-items:center;gap:9px;opacity:.9;transition:opacity .5s var(--ease)}
+.brandmark .mark{height:19px;width:auto;color:var(--paper);display:block}
+.brandmark .wm{font-family:"Sora",sans-serif;font-weight:700;font-size:16px;letter-spacing:-.03em;color:var(--paper)}
+.brandmark.hide{opacity:0}
+
+/* responsive */
+@media (max-width:900px){
+  .g2,.g3,.g4,.paths,.tl{grid-template-columns:1fr}
+  .tl::before{display:none}
+  .arch{grid-template-columns:1fr;gap:8px}
+  .arch .arrow{transform:rotate(90deg);font-size:18px}
+  .rail{display:none}
+  .slabel{display:none}
+  .lead{max-width:none}
+}
+@media (max-width:620px){
+  .nav{bottom:18px;right:18px}
+  .counter{bottom:24px;left:18px}
+  .cover-meta{gap:22px}
+}
+.nowrap{white-space:nowrap}
+.divider{height:1px;background:var(--line);margin:clamp(16px,2.4vw,30px) 0}
+.tiny{font-size:12px;color:var(--muted-2);font-weight:400;line-height:1.5;margin-top:14px}
+.center{text-align:center}
+
+/* icons */
+.ic{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;width:20px;height:20px;display:block}
+.icwrap{width:clamp(40px,3.4vw,48px);height:clamp(40px,3.4vw,48px);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;border:1px solid var(--line)}
+.icwrap.gold{color:var(--gold);background:rgba(124,92,255,.10)}
+.icwrap.sage{color:var(--sage);background:rgba(70,229,181,.10)}
+.icwrap .ic{width:22px;height:22px}
+
+/* sitemap diagram */
+.sitemap{display:flex;flex-direction:column;align-items:center;margin-top:clamp(16px,2.2vw,30px)}
+.sm-root{display:inline-flex;align-items:center;gap:9px;padding:11px 22px;border-radius:12px;font-weight:700;font-size:clamp(15px,1.5vw,18px);color:var(--gold);border:1px solid rgba(124,92,255,.4);background:rgba(124,92,255,.10)}
+.sm-root .ic{width:18px;height:18px}
+.sm-trunk{width:1px;height:24px;background:var(--line)}
+.sm-kids{display:grid;grid-template-columns:repeat(6,1fr);gap:11px;width:100%;position:relative;padding-top:24px}
+.sm-kids::before{content:"";position:absolute;top:0;left:8.33%;right:8.33%;height:1px;background:var(--line)}
+.sm-kid{position:relative;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:13px 11px;text-align:center}
+.sm-kid::before{content:"";position:absolute;top:-24px;left:50%;width:1px;height:24px;background:var(--line)}
+.sm-kid .t{font-size:clamp(11.5px,1.1vw,14px);font-weight:600;color:var(--paper);display:block;margin-bottom:4px}
+.sm-kid .d{font-size:10.5px;color:var(--muted);line-height:1.35;font-weight:300}
+.sm-land{margin-top:16px;width:100%;display:flex;justify-content:center}
+.sm-land .box{border:1px dashed rgba(124,92,255,.5);border-radius:12px;padding:13px 22px;text-align:center;background:rgba(124,92,255,.05)}
+.sm-land .t{font-weight:600;color:var(--gold);font-size:13.5px}
+.sm-land .d{font-size:11px;color:var(--muted);margin-top:3px;font-weight:300}
+@media (max-width:900px){.sm-kids{grid-template-columns:1fr 1fr}.sm-kids::before{display:none}.sm-kid::before{display:none}.sm-trunk{display:none}}
+
+/* browser wireframe */
+.wire{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:rgba(238,236,250,.02)}
+.wire .topbar{display:flex;align-items:center;gap:6px;padding:9px 13px;border-bottom:1px solid var(--line);background:rgba(238,236,250,.03)}
+.wire .topbar i{width:8px;height:8px;border-radius:50%;background:var(--line);display:block}
+.wire .url{flex:1;height:12px;border-radius:6px;background:var(--line);margin-left:8px;max-width:60%}
+.wire .body{padding:12px;display:flex;flex-direction:column;gap:8px}
+.wb{border-radius:8px;background:rgba(238,236,250,.05);border:1px solid var(--line-soft);padding:9px 10px;position:relative}
+.wb .lab{position:absolute;top:50%;right:9px;transform:translateY(-50%);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted-2);font-weight:700}
+.wb .ln{height:6px;border-radius:4px;background:rgba(238,236,250,.2);margin-bottom:5px}
+.wb .ln.s{width:34%}.wb .ln.m{width:54%}.wb .ln.l{width:72%}
+.wb .pill{display:inline-block;height:11px;width:64px;border-radius:6px;background:var(--gold);opacity:.75;margin-top:3px}
+.wb.accent{border-color:rgba(124,92,255,.4);background:rgba(124,92,255,.08)}
+.wb-row{display:flex;gap:6px}
+.wb-row .cell{flex:1;height:26px;border-radius:6px;background:rgba(238,236,250,.07);border:1px solid var(--line-soft)}
+.wb-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.wb-grid .cell{height:28px;border-radius:6px;background:rgba(238,236,250,.07);border:1px solid var(--line-soft)}
+
+/* brand board */
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.bt{border:1px solid var(--line);border-radius:14px;padding:15px;background:var(--panel);display:flex;flex-direction:column;gap:10px;min-height:98px;justify-content:space-between}
+.bt .cap{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);font-weight:700}
+.bt .aa{font-family:"Sora";font-size:30px;font-weight:300;color:var(--paper);line-height:1}
+.bt .aa b{font-weight:700}
+.swatches{display:flex;gap:6px}
+.swatches i{width:20px;height:20px;border-radius:6px;display:block;border:1px solid var(--line)}
+.logo-tiles{display:flex;gap:6px}
+.logo-tiles i{flex:1;height:30px;border-radius:7px;border:1px solid var(--line);background:rgba(238,236,250,.05);display:flex;align-items:center;justify-content:center;color:var(--muted-2)}
+.logo-tiles i .ic{width:15px;height:15px}
+.bdots{display:flex;gap:5px}.bdots i{width:7px;height:7px;border-radius:50%;background:var(--muted-2);display:block}
+.imgmini{display:flex;gap:6px}.imgmini i{flex:1;height:30px;border-radius:6px;background:linear-gradient(135deg,rgba(124,92,255,.18),rgba(70,229,181,.12));border:1px solid var(--line-soft);display:block}
+@media (max-width:900px){.board{grid-template-columns:1fr 1fr}}
+
+/* contact card */
+.contact{display:inline-flex;flex-direction:column;border:1px solid var(--line);border-radius:18px;padding:clamp(22px,2.4vw,32px);background:var(--panel);backdrop-filter:blur(2px);margin-top:clamp(22px,3vw,40px)}
+.contact .logo-row{display:flex;align-items:center;margin-bottom:18px}
+.contact .logo-row .mark{height:22px;width:auto;color:var(--paper);display:block}
+.contact .nm{font-size:clamp(21px,2.2vw,28px);font-weight:700;letter-spacing:-.02em;color:var(--paper);line-height:1}
+.contact .role{font-size:13px;color:var(--muted);font-weight:400;margin:6px 0 16px}
+.contact a{display:inline-flex;align-items:center;gap:12px;color:var(--paper-dim);text-decoration:none;font-size:clamp(15px,1.5vw,17.5px);font-weight:400;padding:7px 0;transition:color .3s var(--ease)}
+.contact a:hover{color:var(--gold)}
+.contact a .ic{color:var(--gold);width:19px;height:19px;flex:none}
+</style>
+</head>
+<body>
+<svg width="0" height="0" aria-hidden="true" style="position:absolute"><symbol id="logo" viewBox="0 0 1420 279"><path d="M956.234 35.44C949.444 37.007 943.524 44.1456 943.524 50.936C943.524 59.4676 946.136 63.8204 953.1 66.7803C971.208 74.2671 989.838 63.1239 985.485 47.1055C984.789 44.4938 982.351 41.0116 979.914 39.2705C975.561 36.1364 963.025 34.0471 956.234 35.44Z" fill="currentColor"/>
+<path d="M1165.34 63.4725C1166.04 70.9593 1167.08 80.0132 1167.61 83.4955L1168.65 90.1117H1155.25H1142.01V102.3C1142.01 108.916 1142.01 115.01 1142.01 115.706C1142.01 116.577 1147.06 117.273 1153.33 117.622L1164.65 118.144V150.877C1164.65 189.008 1166.39 197.017 1176.84 208.857C1186.76 220.348 1197.9 224.527 1219.49 225.397C1241.08 226.268 1252.23 224.527 1253.1 220C1253.44 218.259 1253.27 211.817 1252.57 205.723L1251.53 194.928L1235.34 195.798C1222.1 196.669 1218.1 196.321 1212.7 193.709C1202.43 188.834 1201.21 183.959 1201.21 148.44V117.97H1226.46H1251.7V104.041V90.1117H1222.1C1205.91 90.1117 1192.51 89.9376 1192.51 89.5894C1192.51 89.2412 1195.29 80.8838 1198.6 71.1334C1201.91 61.209 1204.17 52.3293 1203.65 51.6328C1203.13 50.7622 1194.07 50.0658 1183.45 50.0658H1164.13L1165.34 63.4725Z" fill="currentColor"/>
+<path d="M346.839 89.2417C310.972 99.1661 294.083 123.368 296.172 161.673C298.262 196.321 318.111 217.563 355.023 224.527C368.429 226.965 399.073 225.224 410.739 221.393L420.315 218.085L420.837 203.634C421.185 195.799 421.011 189.357 420.663 189.357C420.315 189.357 413.873 190.924 406.386 192.839C389.845 197.018 367.385 197.366 356.59 193.709C339.701 187.615 331.343 173.338 332.736 152.445C333.781 135.207 339.004 127.024 352.759 120.234C361.813 115.881 364.599 115.359 379.398 115.533C391.064 115.707 399.247 116.752 407.256 119.537C413.524 121.453 419.096 123.194 419.967 123.194C420.663 123.194 421.185 116.577 421.185 108.394V93.7686L412.132 90.8087C399.247 86.8041 359.201 85.7594 346.839 89.2417Z" fill="currentColor"/>
+<path d="M486.478 89.0672C450.959 97.5988 430.762 129.636 436.856 167.766C442.776 205.549 469.415 225.92 512.421 225.92C547.94 225.92 572.838 212.861 584.504 187.963C588.857 178.909 589.205 176.298 589.205 156.275C589.205 136.426 588.857 133.64 584.678 124.76C575.972 106.13 561.869 94.813 540.453 89.2413C528.091 86.1073 499.014 85.9332 486.478 89.0672ZM527.221 116.229C543.761 120.93 553.512 135.033 553.512 154.36C553.512 175.427 547.418 186.919 532.966 193.361C519.56 199.107 495.532 197.191 486.478 189.704C469.589 175.601 467.848 138.689 483.344 124.586C492.92 115.881 512.769 112.05 527.221 116.229Z" fill="currentColor"/>
+<path d="M682.181 89.7632C664.944 96.7278 654.671 109.264 649.796 129.635C648.055 136.251 646.488 139.908 645.792 138.515C645.095 137.296 642.658 125.805 640.568 113.094L636.389 90.1115H623.679H610.969L611.317 155.752L611.84 221.567L629.599 222.089L647.184 222.611L647.881 184.655C648.403 148.962 648.577 146.176 652.408 138.515C665.466 112.05 699.767 107 716.133 128.939C719.615 133.64 719.79 136.774 720.66 177.69L721.531 221.567L739.464 222.089L757.224 222.611V179.954C757.224 155.056 756.353 133.466 755.309 128.068C751.652 110.831 742.947 98.8171 728.669 91.5044C718.571 86.1069 693.498 85.2363 682.181 89.7632Z" fill="currentColor"/>
+<path d="M1045.21 89.0675C1018.74 95.6838 1005.86 115.184 1014.04 136.252C1019.09 149.833 1033.02 157.32 1064.01 163.24C1082.29 166.722 1090.48 170.204 1093.26 175.253C1098.31 185.004 1092.22 193.535 1078.11 196.147C1066.8 198.41 1041.2 195.625 1027.45 190.924C1010.56 185.004 1011.43 185.004 1011.43 189.705C1011.43 192.142 1010.91 198.759 1010.38 204.678L1009.16 215.299L1015.96 218.085C1037.02 226.791 1084.21 228.358 1104.58 220.697C1128.43 211.817 1138.53 196.321 1133.31 176.994C1129.13 161.324 1113.98 152.27 1080.2 145.48C1070.63 143.565 1060.53 140.779 1057.92 139.386C1046.95 133.815 1048.69 120.756 1061.05 116.577C1072.54 112.573 1091.87 114.836 1122.86 123.368C1124.95 123.89 1125.65 121.452 1126.52 111.006C1127.21 102.3 1127.04 97.2508 1125.65 95.8579C1119.03 88.7193 1064.36 84.0182 1045.21 89.0675Z" fill="currentColor"/>
+<path d="M1314.73 89.2413C1280.95 98.6434 1263.89 123.89 1265.98 161.846C1268.42 202.937 1296.45 225.92 1343.81 225.92C1369.93 225.92 1390.47 217.911 1404.05 202.763C1415.72 190.053 1419.55 178.387 1419.55 156.275C1419.55 136.426 1416.24 124.586 1407.54 112.921C1401.44 104.389 1386.82 94.1165 1376.54 90.8083C1364.01 86.6296 1327.09 85.7591 1314.73 89.2413ZM1362.27 118.666C1377.41 125.805 1382.81 135.555 1382.81 156.275C1382.81 183.262 1369.75 196.669 1343.11 196.669C1323.26 196.669 1313.34 191.271 1306.38 176.298C1301.85 166.547 1300.8 151.574 1304.11 139.908C1306.55 131.203 1316.82 120.233 1325.7 117.099C1336.67 113.269 1352.17 113.791 1362.27 118.666Z" fill="currentColor"/>
+<path d="M770.282 93.0717C770.804 94.8128 774.112 104.041 777.42 113.617C780.728 123.193 790.653 151.574 799.533 176.82L815.551 222.438L849.503 222.089L883.455 221.567L892.683 195.45C897.906 180.999 908.179 151.574 915.666 129.635L929.247 90.1117H910.791H892.161L871.789 152.618C860.472 186.918 851.244 215.995 851.244 217.04C851.244 218.085 850.548 218.955 849.851 218.955C848.981 218.955 846.369 212.513 843.931 204.504C841.494 196.669 832.266 167.766 823.212 140.256L806.845 90.1117H787.867C770.63 90.1117 769.063 90.2859 770.282 93.0717Z" fill="currentColor"/>
+<path d="M938.301 104.911V119.711H944.395H950.489L950.837 170.552L951.359 221.567L969.293 222.089L987.052 222.611V156.274V90.1115H962.677H938.301V104.911Z" fill="currentColor"/>
+<path d="M180.945 58.2011C161.685 76.0004 147.332 94.3083 142.608 107.531C134.068 131.094 135.885 158.555 147.332 180.593C153.691 193.137 157.688 197.883 176.766 215.852C197.661 235.686 199.114 236.703 206.018 236.703C212.559 236.703 214.558 235.516 226.913 224.328C243.811 209.241 246.899 205.173 246.899 198.392C246.899 193.646 243.447 189.747 221.462 169.066C199.296 148.215 196.025 144.485 196.025 139.569C196.025 134.823 199.296 131.094 221.462 110.243C245.446 87.5276 246.899 85.8324 246.899 79.5603C246.899 73.4576 245.628 71.7625 229.82 57.3535C214.558 43.2835 212.196 41.7579 206.018 41.7579C199.841 41.7579 197.479 43.2835 180.945 58.2011Z" fill="currentColor"/>
+<path d="M171.627 254.328C178.714 262.478 177.581 279 166.982 279H107.24C103.768 279 96.6146 277.475 94.2925 274.804L3.16435 170.005C-3.92261 161.854 1.66994 148.873 12.2682 148.873H69.0378C72.5103 148.873 75.8196 150.398 78.1416 153.069L171.627 254.328Z" fill="currentColor"/>
+<path d="M171.627 24.6716C178.714 16.5214 177.581 0 166.982 0H107.24C103.768 0 96.6146 1.52506 94.2925 4.1955L3.16435 108.995C-3.9226 117.146 1.66994 130.126 12.2682 130.126H69.0378C72.5103 130.126 75.8196 128.601 78.1416 125.931L171.627 24.6716Z" fill="currentColor"/></symbol>
+<symbol id="ic-spark" viewBox="0 0 24 24"><path d="M12 3l1.7 6.3L20 11l-6.3 1.7L12 19l-1.7-6.3L4 11l6.3-1.7L12 3z"/></symbol>
+<symbol id="ic-layout" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 9.5v10"/></symbol>
+<symbol id="ic-zap" viewBox="0 0 24 24"><path d="M13 2.5L4.5 13.5H11l-1 8 9.5-12.5H13z"/></symbol>
+<symbol id="ic-doc" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M9.5 13h6M9.5 16.5h4"/></symbol>
+<symbol id="ic-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/></symbol>
+<symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></symbol>
+<symbol id="ic-phone" viewBox="0 0 24 24"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 5 5l1.5-2 4 1.5v3a2 2 0 0 1-2 2A15.5 15.5 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"/></symbol>
+<symbol id="ic-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 5.5L20 7"/></symbol>
+<symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4.5 5.5h15v10h-9l-4 3.5v-3.5h-2z"/></symbol></svg>
+<div class="bg"><div class="scrim"></div><div class="grain"></div><div class="vignette"></div></div>
+<div class="progress" id="progress"></div>
+
+<div class="hint" id="hint"><span class="key">←</span><span class="key">→</span> of de knoppen</div>
+
+<div class="stage" id="stage">
+
+  <!-- 1 COVER -->
+  <section class="slide" data-label="Isothermica">
+    <div class="slide-inner">
+      <div class="brand r" style="--i:0">
+        <svg class="mark" viewBox="0 0 1420 279" role="img" aria-label="Convisto"><use href="#logo"/></svg>
+      </div>
+      <div class="seal r" style="--i:5">voorstel · samenwerking</div>
+      <div class="kicker r" style="--i:0">Voorstel · merk, website &amp; leadgeneratie</div>
+      <h1 class="r" style="--i:1">Isothermica</h1>
+      <p class="lead r mt-s" style="--i:2">Van breed installatiebedrijf naar <em>dé warmtepompspecialist</em> van de regio. Een merk dat die keuze uitstraalt, en een website die ze verkoopt.</p>
+      <div class="cover-meta r" style="--i:3">
+        <div class="m"><div class="lab">Onderwerp</div><div class="val">Merk, website &amp; leadtools</div></div>
+        <div class="m"><div class="lab">Rol</div><div class="val">Design &amp; development partner</div></div>
+        <div class="m"><div class="lab">Tijdlijn</div><div class="val">Live vóór september</div></div>
+      </div>
+      <p class="tiny r" style="--i:4">22 slides · navigeer met de pijltjes of de knoppen rechtsonder</p>
+    </div>
+  </section>
+
+  <!-- 2 TRANSFORMATIE -->
+  <section class="slide theme-black" data-label="Waar we naartoe gaan">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Waar we naartoe gaan</div>
+      <h2 class="r" style="--i:1">Van duizendpoot naar <em>één specialisme.</em></h2>
+      <p class="lead r" style="--i:2">Je hebt drie jaar lang alles aangepakt. Nu kies je voor <strong>één ding</strong> en doe je dat beter dan wie ook: warmtepompen. Dat vraagt om een merk dat orde en expertise uitstraalt, een website die bezoekers omzet in aanvragen, en tools die elke maand voorspelbaar leads binnenhalen.</p>
+      <div class="flex gap mt r" style="--i:3;flex-wrap:wrap">
+        <div class="chip brand">Eén scherp specialisme</div>
+        <div class="chip brand">Transparante vaste prijzen</div>
+        <div class="chip brand">Voorspelbare instroom</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 OVERZICHT -->
+  <section class="slide" data-label="Het traject">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Het traject in één oogopslag</div>
+      <h2 class="r" style="--i:1">Wat we samen bouwen</h2>
+      <div class="grid g3 mt r" style="--i:2">
+        <div class="card glow-gold"><div class="icwrap gold"><svg class="ic"><use href="#ic-spark"/></svg></div><div class="num">01 · Fundament</div><h3>Strategie &amp; identiteit</h3><p>Wie je bent, waar je voor staat en hoe je eruitziet. De basis waar al de rest uit volgt.</p></div>
+        <div class="card glow-gold"><div class="icwrap gold"><svg class="ic"><use href="#ic-layout"/></svg></div><div class="num">02 · Platform</div><h3>Volledige website</h3><p>Conversiegericht opgebouwd, met een aparte landingpagina voor je advertenties.</p></div>
+        <div class="card glow-sage"><div class="icwrap sage"><svg class="ic"><use href="#ic-zap"/></svg></div><div class="num">03 · Motor</div><h3>Slimme leadtools</h3><p>Een AI-chatbot en een besparingscalculator die bezoekers omzetten in leads.</p></div>
+      </div>
+      <p class="sub mt-s r" style="--i:3">Eén samenhangend traject, gebouwd om <strong>live te staan vóór september.</strong></p>
+    </div>
+  </section>
+
+  <!-- 4 STRATEGIE INTRO -->
+  <section class="slide" data-label="Strategie">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Fase 1 · Strategie</div>
+      <h2 class="r" style="--i:1">Eerst de strategie.<br><em>Dan</em> pas het logo.</h2>
+      <p class="lead r" style="--i:2">Een logo is een vertaling van je strategie, geen vertrekpunt. We bepalen eerst wie Isothermica is. <strong>Alles daarna, kleur, vorm en taal, volgt daaruit.</strong> Zo bouwen we een merk dat klopt, niet één dat toevallig mooi is.</p>
+      <ul class="ilist mt r" style="--i:3">
+        <li><span class="mk num">1</span><span>Archetypebepaling</span></li>
+        <li><span class="mk num">2</span><span>Missie &amp; visie</span></li>
+        <li><span class="mk num">3</span><span>Positionering</span></li>
+        <li><span class="mk num">4</span><span>Kernboodschap &amp; pitch</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 5 ARCHETYPE -->
+  <section class="slide theme-black" data-label="Archetype">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Strategie · Archetypebepaling</div>
+      <h2 class="r" style="--i:1">Van creator naar <em>ruler.</em></h2>
+      <div class="paths mt r" style="--i:2">
+        <div class="path platform">
+          <div class="tag">Vroeger</div>
+          <h3>De creator</h3>
+          <p>Je luisterde naar wat de klant wou en maakte dat. Volgend, breed, moeilijk te onderscheiden.</p>
+        </div>
+        <div class="path wig">
+          <div class="tag">Vanaf nu</div>
+          <h3>De ruler</h3>
+          <p>Je komt binnen als de expert die bepaalt. Je adviseert, neemt over en geeft rust. Gezag, structuur, kwaliteit.</p>
+        </div>
+      </div>
+      <p class="tiny r" style="--i:3">We leggen het archetype vast en vertalen het naar je toon, je gedrag en je beeld. Het wordt de rode draad door alles wat je laat zien.</p>
+    </div>
+  </section>
+
+  <!-- 6 MISSIE & VISIE -->
+  <section class="slide" data-label="Missie & visie">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Strategie · Missie &amp; visie</div>
+      <h2 class="r" style="--i:1">Het <em>waarom</em> achter de machine</h2>
+      <div class="grid g2 mt r" style="--i:2">
+        <div class="card"><div class="num">Missie</div><h3>Waarom je bestaat</h3><p>Wat Isothermica elke dag concreet waarmaakt voor je klant. De belofte die je nakomt.</p></div>
+        <div class="card"><div class="num">Visie</div><h3>Waar je naartoe bouwt</h3><p>Het grotere plaatje achter de geoliede machine die we samen opzetten.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 POSITIONERING -->
+  <section class="slide" data-label="Positionering">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Strategie · Positionering</div>
+      <h2 class="r" style="--i:1">Eén specialist, <em>geen</em> duizendpoot.</h2>
+      <p class="lead r" style="--i:2">We bepalen scherp hoe je je onderscheidt van elke installateur die "ook wel warmtepompen doet".</p>
+      <ul class="ilist mt r" style="--i:3">
+        <li><span class="mk sage">✓</span><span>Transparante <strong>vaste prijzen</strong></span></li>
+        <li><span class="mk sage">✓</span><span>Certificering en aantoonbare expertise</span></li>
+        <li><span class="mk sage">✓</span><span>Een vlekkeloos, voorspelbaar proces</span></li>
+        <li><span class="mk sage">✓</span><span>Ideale klant scherp: <strong>nieuwbouw en renovatie met budget voor groene energie</strong></span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 8 PITCH -->
+  <section class="slide theme-black" data-label="Kernboodschap">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Strategie · Kernboodschap</div>
+      <p class="quote r" style="--i:1">Eén zin die <em>blijft hangen.</em></p>
+      <p class="lead mt r" style="--i:2">Wat zeg je in tien seconden zodat de juiste klant meteen begrijpt waarom hij bij jou moet zijn? <strong>Die boodschap loopt door je hele website, je advertenties en je gesprekken.</strong> Consistent, herkenbaar, overtuigend.</p>
+    </div>
+  </section>
+
+  <!-- 9 BRANDING INTRO -->
+  <section class="slide" data-label="Identiteit">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Fase 1 · Identiteit</div>
+      <h2 class="r" style="--i:1">De strategie wordt <em>zichtbaar.</em></h2>
+      <p class="lead r" style="--i:2">Zodra de strategie staat, vertalen we ze naar een complete visuele identiteit. Geen los logo, maar <strong>een samenhangend merk</strong> dat overal consistent is: op je bus, je offerte, je website en je advertenties.</p>
+    </div>
+  </section>
+
+  <!-- 10 BRANDING DELIVERABLES -->
+  <section class="slide" data-label="Wat je krijgt">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Identiteit · Wat je krijgt</div>
+      <h2 class="r" style="--i:1">Je volledige merkpakket</h2>
+      <div class="board mt r" style="--i:2">
+        <div class="bt"><div class="cap">Logo</div><div class="logo-tiles"><i><svg class="ic"><use href="#ic-spark"/></svg></i><i></i><i></i></div></div>
+        <div class="bt"><div class="cap">Kleurenpalet</div><div class="swatches"><i style="background:#7C5CFF"></i><i style="background:#46E5B5"></i><i style="background:#1B1642"></i><i style="background:#F1EFFA"></i></div></div>
+        <div class="bt"><div class="cap">Typografie</div><div class="aa">A<b>a</b></div></div>
+        <div class="bt"><div class="cap">Beeldtaal</div><div class="imgmini"><i></i><i></i></div></div>
+        <div class="bt"><div class="cap">Social kit</div><div class="bdots"><i></i><i></i><i></i><i></i></div></div>
+        <div class="bt"><div class="cap">Drukwerk</div><div class="logo-tiles"><i></i><i></i></div></div>
+      </div>
+      <div class="grid g2 mt-s r" style="--i:3">
+        <ul class="ilist">
+          <li><span class="mk gold">✦</span><span><strong>Drie logoconcepten</strong> om uit te kiezen</span></li>
+          <li><span class="mk gold">✦</span><span><strong>Volledige merkrichtlijnen</strong></span></li>
+          <li><span class="mk gold">✦</span><span>Kleurenpalet en <strong>typografie</strong></span></li>
+          <li><span class="mk gold">✦</span><span>Beeldtaal en grafische stijl</span></li>
+        </ul>
+        <ul class="ilist">
+          <li><span class="mk gold">✦</span><span>Richtlijnen voor <strong>logogebruik</strong></span></li>
+          <li><span class="mk gold">✦</span><span>Social media kit</span></li>
+          <li><span class="mk gold">✦</span><span>Briefpapier en visitekaartjes</span></li>
+          <li><span class="mk gold">✦</span><span><strong>Onbeperkte revisies</strong> tot het klopt</span></li>
+        </ul>
+      </div>
+      <p class="tiny r" style="--i:4">Illustratief. Je eigen logo, kleuren en stijl bepalen we samen op basis van de strategie.</p>
+    </div>
+  </section>
+
+  <!-- 11 WEBSITE INTRO -->
+  <section class="slide theme-black" data-label="Website">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Fase 2 · Website</div>
+      <h2 class="r" style="--i:1">Geen brochure. <em>Een verkoopmachine.</em></h2>
+      <div class="paths mt r" style="--i:2">
+        <div class="path platform">
+          <div class="tag">Wat het niet wordt</div>
+          <h3>Een brochuresite</h3>
+          <p>Mooi om te zien, maar passief. Bezoekers lezen wat en klikken weg, zonder dat er iets gebeurt.</p>
+        </div>
+        <div class="path wig">
+          <div class="tag">Wat je krijgt</div>
+          <h3>Een verkoopmachine</h3>
+          <p>Elke pagina, knop en tekst staat in functie van één doel: bezoekers omzetten in aanvragen.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 SITEMAP -->
+  <section class="slide" data-label="Structuur">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Website · Structuur</div>
+      <h2 class="r" style="--i:1">Alles wat je krijgt</h2>
+      <div class="sitemap r" style="--i:2">
+        <div class="sm-root"><svg class="ic"><use href="#ic-layout"/></svg> Home</div>
+        <div class="sm-trunk"></div>
+        <div class="sm-kids">
+          <div class="sm-kid"><span class="t">Warmtepompen</span><span class="d">Je hoofdaanbod, vaste prijzen, premies</span></div>
+          <div class="sm-kid"><span class="t">Aanpak</span><span class="d">De methode, van check tot oplevering</span></div>
+          <div class="sm-kid"><span class="t">Realisaties</span><span class="d">Projecten met behaalde besparingen</span></div>
+          <div class="sm-kid"><span class="t">Over ons</span><span class="d">Verhaal, expertise en partners</span></div>
+          <div class="sm-kid"><span class="t">Besparingscheck</span><span class="d">De calculatorpagina die leads oplevert</span></div>
+          <div class="sm-kid"><span class="t">Contact</span><span class="d">Formulier en directe call-to-action</span></div>
+        </div>
+        <div class="sm-land"><div class="box"><div class="t">Landingpagina</div><div class="d">Los van de site, voor je Meta-advertenties</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 HOME -->
+  <section class="slide" data-label="Pagina · Home">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Pagina · Home</div>
+      <h2 class="r" style="--i:1">De homepagina</h2>
+      <div class="grid g2 mt r" style="--i:2;align-items:start">
+        <div class="wire">
+          <div class="topbar"><i></i><i></i><i></i><div class="url"></div></div>
+          <div class="body">
+            <div class="wb hero"><span class="lab">Hero</span><div class="ln l"></div><div class="ln m"></div><span class="pill"></span></div>
+            <div class="wb-row"><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div></div>
+            <div class="wb-grid"><div class="cell"></div><div class="cell"></div><div class="cell"></div></div>
+            <div class="wb-row"><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div></div>
+            <div class="wb accent"><span class="lab">Calculator</span><div class="ln s"></div><span class="pill"></span></div>
+            <div class="wb-grid"><div class="cell"></div><div class="cell"></div></div>
+            <div class="wb"><span class="lab">CTA</span><div class="ln m"></div><span class="pill"></span></div>
+          </div>
+        </div>
+        <ul class="ilist">
+          <li><span class="mk gold">›</span><span>Hero met je claim en een directe <strong>besparingscheck</strong></span></li>
+          <li><span class="mk gold">›</span><span>Vertrouwensbalk: dealerstatus, certificaten, installaties</span></li>
+          <li><span class="mk gold">›</span><span>Het probleem en je belofte</span></li>
+          <li><span class="mk gold">›</span><span>Je diensten in één oogopslag</span></li>
+          <li><span class="mk gold">›</span><span>Zo werkt het, in vier stappen</span></li>
+          <li><span class="mk gold">›</span><span>Teaser van de <strong>besparingscalculator</strong></span></li>
+          <li><span class="mk gold">›</span><span>Uitgelichte realisaties &amp; videoreviews</span></li>
+          <li><span class="mk gold">›</span><span>Veelgestelde vragen</span></li>
+          <li><span class="mk gold">›</span><span>Slot met een duidelijke call-to-action</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 WARMTEPOMPEN -->
+  <section class="slide theme-black" data-label="Pagina · Warmtepompen">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Pagina · Warmtepompen</div>
+      <h2 class="r" style="--i:1">Je hoofdaanbod</h2>
+      <div class="grid g2 mt r" style="--i:2">
+        <ul class="ilist">
+          <li><span class="mk sage">›</span><span>Wat een warmtepomp je oplevert</span></li>
+          <li><span class="mk sage">›</span><span>Voor wie: <strong>nieuwbouw, renovatie, premies</strong></span></li>
+          <li><span class="mk sage">›</span><span>Je aanbod met transparante <strong>vaste prijzen</strong></span></li>
+          <li><span class="mk sage">›</span><span>Premies en financiering</span></li>
+        </ul>
+        <ul class="ilist">
+          <li><span class="mk sage">›</span><span>Het installatieproces</span></li>
+          <li><span class="mk sage">›</span><span>Onderhoud en garantie</span></li>
+          <li><span class="mk sage">›</span><span>Specifieke veelgestelde vragen</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 KERNPAGINA'S -->
+  <section class="slide" data-label="Pagina's · Kern">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Pagina's · De kern van je verhaal</div>
+      <h2 class="r" style="--i:1">Drie pagina's die vertrouwen bouwen</h2>
+      <div class="grid g3 mt r" style="--i:2">
+        <div class="card"><div class="num">Aanpak</div><h3>De methode</h3><p>Van check tot oplevering. Wat de klant van je mag verwachten, en waarom dat rust geeft.</p></div>
+        <div class="card"><div class="num">Realisaties</div><h3>Het bewijs</h3><p>Een filterbaar overzicht, met detailpagina's: situatie, oplossing en de behaalde besparing.</p></div>
+        <div class="card"><div class="num">Over ons</div><h3>De mens</h3><p>Je verhaal, je visie, je expertise en je partners. Het vakmanschap achter het merk.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 CONVERSIEPAGINA'S -->
+  <section class="slide" data-label="Pagina's · Conversie">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Pagina's · Conversie</div>
+      <h2 class="r" style="--i:1">Waar bezoekers <em>leads</em> worden</h2>
+      <div class="grid g2 mt r" style="--i:2">
+        <div class="card glow-sage"><h3>Besparingscheck</h3><p>De calculatorpagina. Een bezoeker geeft zijn gegevens in, krijgt meteen zijn besparing te zien, en laat zijn contactgegevens achter om het resultaat te ontvangen.</p></div>
+        <div class="card glow-gold"><h3>Contact</h3><p>Een helder formulier, je werkgebied en bereikbaarheid, en een directe call-to-action voor wie meteen wil bellen.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 17 LANDINGPAGINA -->
+  <section class="slide theme-black" data-label="Landingpagina">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Website · Advertentie-landingpagina</div>
+      <h2 class="r" style="--i:1">Eén pagina, <em>één doel.</em></h2>
+      <p class="lead r" style="--i:2">Een aparte, gestripte pagina voor je Meta-advertenties. Geen navigatie, geen afleiding. <strong>De hook bovenaan, de calculator meteen in beeld, het bewijs eronder.</strong> Gebouwd om koud verkeer om te zetten in leads.</p>
+    </div>
+  </section>
+
+  <!-- 18 CHATBOT -->
+  <section class="slide" data-label="Leadtool · Chatbot">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Fase 2 · Leadtool</div>
+      <h2 class="r" style="--i:1">Een AI-chatbot die bezoekers <em>omzet.</em></h2>
+      <p class="lead r" style="--i:2">Een slimme chatbot op je site staat bezoekers te woord, beantwoordt hun vragen over warmtepompen en premies, en begeleidt ze naar een aanvraag. <strong>Getraind op jouw diensten</strong>, zodat hij aanvoelt als een verlengstuk van het bedrijf.</p>
+    </div>
+  </section>
+
+  <!-- 19 CALCULATOR -->
+  <section class="slide theme-black" data-label="Leadtool · Calculator">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Fase 2 · Leadtool</div>
+      <h2 class="r" style="--i:1">De <em>besparingscalculator.</em></h2>
+      <p class="lead r" style="--i:2">Elke berekening is een lead die rechtstreeks bij jou binnenkomt.</p>
+      <div class="arch mt r" style="--i:3">
+        <div class="col"><div class="head">Invoer</div><div class="node"><svg class="ic" style="color:var(--gold);margin-bottom:9px"><use href="#ic-doc"/></svg><span class="t">Bezoeker geeft in</span>oppervlakte · EPC · huidig systeem · isolatie</div></div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="head">Berekening</div><div class="node"><svg class="ic" style="color:var(--gold);margin-bottom:9px"><use href="#ic-calc"/></svg><span class="t">Direct resultaat</span>besparing &amp; terugverdientijd</div></div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="head">Lead</div><div class="node"><svg class="ic" style="color:var(--sage);margin-bottom:9px"><use href="#ic-user"/></svg><span class="t">Bij jou binnen</span>contactgegevens om resultaat te zien</div></div>
+      </div>
+      <p class="tiny r" style="--i:4">Eerste versie met een vaste set invoervelden en één rekenformule. Uitbreidingen zoals een EPC-koppeling of een PDF-rapport kunnen we later toevoegen.</p>
+    </div>
+  </section>
+
+  <!-- 20 AANPAK & TIMING -->
+  <section class="slide" data-label="Aanpak">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Aanpak</div>
+      <h2 class="r" style="--i:1">Drie fases. Live <em>vóór september.</em></h2>
+      <div class="tl mt r" style="--i:2">
+        <div class="phase p1"><div class="dot"></div><div class="ph">Fase 1 · jun–jul</div><h3>Strategie &amp; identiteit</h3><p>Archetype, missie, visie, positionering en pitch. Plus de rekenlogica van de calculator.</p></div>
+        <div class="phase"><div class="dot"></div><div class="ph">Fase 2 · jul–aug</div><h3>Bouw</h3><p>Website, landingpagina, AI-chatbot en besparingscalculator.</p></div>
+        <div class="phase p2"><div class="dot"></div><div class="ph">Fase 3 · eind aug</div><h3>Testen &amp; live</h3><p>Teksten finaliseren, alles testen en professioneel online vóór september.</p></div>
+      </div>
+      <p class="tiny r" style="--i:3">Een paar beslissingen leggen we best vast vóór de zomer: de merkrichting, de rekenformule en de teksten. Zo loopt de bouw door terwijl je op vakantie bent.</p>
+    </div>
+  </section>
+
+  <!-- 21 INVESTERING -->
+  <section class="slide theme-black" data-label="Investering">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Investering</div>
+      <div class="stat r" style="--i:1">€10.000<span class="unit">excl. btw</span></div>
+      <div class="stat-label r" style="--i:1">Voor het volledige traject: strategie, identiteit, website, landingpagina, chatbot en calculator.</div>
+      <div class="grid g2 mt r" style="--i:2">
+        <div class="card glow-sage"><h3>Betaling</h3><p>50% bij opstart, 50% bij oplevering.</p></div>
+        <div class="card glow-clay"><h3>Niet inbegrepen</h3><p>Advertentiebudget en campagnebeheer, video's en testimonials, en een onderhoudscontract na livegang. Die bekijken we los wanneer de motor draait.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 22 SLOT -->
+  <section class="slide theme-black" data-label="Tot snel">
+    <div class="slide-inner">
+      <div class="kicker r" style="--i:0">Tot snel</div>
+      <p class="quote r" style="--i:1">Klaar om <em>te bouwen.</em></p>
+      <p class="lead mt r" style="--i:2">Geef het signaal en ik plan fase 1 in. Spreek je snel!</p>
+      <div class="contact r" style="--i:3">
+        <div class="logo-row"><svg class="mark" viewBox="0 0 1420 279" role="img" aria-label="Convisto"><use href="#logo"/></svg></div>
+        <div class="nm">Gianluca Punzo</div>
+        <div class="role">Design &amp; development partner · Convisto</div>
+        <a href="tel:+32488896655"><svg class="ic"><use href="#ic-phone"/></svg> +32 488 89 66 55</a>
+        <a href="mailto:gianluca@convisto.be"><svg class="ic"><use href="#ic-mail"/></svg> gianluca@convisto.be</a>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- chrome -->
+<div class="brandmark" id="brandmark">
+  <svg class="mark" viewBox="0 0 1420 279" role="img" aria-label="Convisto"><use href="#logo"/></svg>
+</div>
+<div class="counter"><span class="cur" id="cur">01</span> / <span id="tot">22</span></div>
+<div class="slabel" id="slabel"></div>
+<div class="rail" id="rail"></div>
+<div class="nav">
+  <button class="navbtn" id="prev" aria-label="Vorige">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <button class="navbtn" id="next" aria-label="Volgende">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+</div>
+
+<script>
+(function(){
+  const slides=[...document.querySelectorAll('.slide')];
+  const total=slides.length;
+  let idx=0;
+  const cur=document.getElementById('cur');
+  const tot=document.getElementById('tot');
+  const prev=document.getElementById('prev');
+  const next=document.getElementById('next');
+  const progress=document.getElementById('progress');
+  const slabel=document.getElementById('slabel');
+  const rail=document.getElementById('rail');
+  const hint=document.getElementById('hint');
+  tot.textContent=String(total).padStart(2,'0');
+
+  slides.forEach((s,i)=>{
+    const b=document.createElement('button');
+    b.setAttribute('aria-label','Ga naar slide '+(i+1));
+    b.addEventListener('click',()=>go(i));
+    rail.appendChild(b);
+  });
+  const dots=[...rail.children];
+
+  function go(n){
+    n=Math.max(0,Math.min(total-1,n));
+    if(n===idx && slides[idx].classList.contains('active')) return;
+    slides[idx].classList.remove('active');
+    idx=n;
+    const s=slides[idx];
+    s.classList.add('active');
+    let theme=s.classList.contains('theme-black')?'black':'silk';
+    document.body.classList.remove('t-silk','t-black');
+    document.body.classList.add('t-'+theme);
+    cur.textContent=String(idx+1).padStart(2,'0');
+    progress.style.width=((idx)/(total-1)*100)+'%';
+    slabel.textContent=s.dataset.label||'';
+    dots.forEach((d,i)=>d.classList.toggle('on',i===idx));
+    document.getElementById('brandmark').classList.toggle('hide',idx===0);
+    prev.disabled=idx===0;
+    next.disabled=idx===total-1;
+  }
+
+  function nextSlide(){go(idx+1)}
+  function prevSlide(){go(idx-1)}
+
+  prev.addEventListener('click',prevSlide);
+  next.addEventListener('click',nextSlide);
+
+  let hinted=false;
+  function dismissHint(){if(!hinted){hinted=true;hint.classList.add('gone')}}
+
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();nextSlide();dismissHint();}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();prevSlide();dismissHint();}
+    else if(e.key==='Home'){go(0);}
+    else if(e.key==='End'){go(total-1);}
+  });
+
+  let tx=0;
+  document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});
+  document.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-tx;
+    if(Math.abs(dx)>55){dx<0?nextSlide():prevSlide();dismissHint();}
+  },{passive:true});
+
+  document.getElementById('stage').addEventListener('click',e=>{
+    if(e.target.closest('button,a,.card,.path')) return;
+    const x=e.clientX/window.innerWidth;
+    if(x>0.62){nextSlide();dismissHint();}
+    else if(x<0.38){prevSlide();dismissHint();}
+  });
+
+  setTimeout(()=>{if(!hinted)hint.classList.add('gone')},6000);
+  go(0);
+})();
+</script>
+</body>
+</html>
