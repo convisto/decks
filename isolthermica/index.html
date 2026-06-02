@@ -793,6 +793,25 @@ strong{font-weight:700;color:var(--paper)}
     if(Math.abs(dx)>55){dx<0?nextSlide():prevSlide();dismissHint();}
   },{passive:true});
 
+  // scroll / wheel navigation: down = next, up = prev
+  let wheelLock=false;
+  window.addEventListener('wheel',e=>{
+    const s=slides[idx];
+    const dy=e.deltaY;
+    if(Math.abs(dy)<Math.abs(e.deltaX)) return;      // ignore horizontal scroll
+    if(Math.abs(dy)<6) return;                        // ignore tiny noise
+    const canScrollDown = s.scrollTop + s.clientHeight < s.scrollHeight - 2;
+    const canScrollUp = s.scrollTop > 2;
+    if(dy>0 && canScrollDown) return;                 // let a tall slide scroll first
+    if(dy<0 && canScrollUp) return;
+    e.preventDefault();
+    if(wheelLock) return;
+    wheelLock=true;
+    setTimeout(()=>{wheelLock=false;},750);           // one slide per gesture
+    dy>0 ? nextSlide() : prevSlide();
+    dismissHint();
+  },{passive:false});
+
   document.getElementById('stage').addEventListener('click',e=>{
     if(e.target.closest('button,a,.card,.path')) return;
     const x=e.clientX/window.innerWidth;
